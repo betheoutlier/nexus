@@ -1,0 +1,23 @@
+# Ignore paths that contain user-generated content.
+files
+sites/*/files
+sites/*/private
+
+sites/*/.git
+sites/*/.gitignore
+sites/*
+!sites/all
+!sites/all/*
+sites
+
+profiles
+profiles/*
+
+local.settings.php
+.DS_Store
+
+.sass-cache
+Gemfile.lock
+
+.vagrant/
+.vagrant
