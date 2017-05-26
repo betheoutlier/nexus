@@ -66,7 +66,7 @@ abstract class WebformHandlerBase extends PluginBase implements WebformHandlerIn
    * @var \Drupal\webform\WebformSubmissionStorageInterface
    */
   protected $submissionStorage;
-  
+
   /**
    * {@inheritdoc}
    */
@@ -215,6 +215,20 @@ abstract class WebformHandlerBase extends PluginBase implements WebformHandlerIn
    */
   public function isDisabled() {
     return !$this->isEnabled();
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public function isSubmissionOptional() {
+    return ($this->pluginDefinition['submission'] === self::SUBMISSION_OPTIONAL);
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public function isSubmissionRequired() {
+    return ($this->pluginDefinition['submission'] === self::SUBMISSION_REQUIRED);
   }
 
   /**

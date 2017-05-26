@@ -107,6 +107,26 @@ function webform_drush_command() {
     'aliases' => ['wfls'],
   ];
 
+  $items['webform-libraries-make'] = [
+    'description' => 'Generates libraries YAML to be included in a drush.make.yml files.',
+    'core' => ['8+'],
+    'bootstrap' => DRUSH_BOOTSTRAP_DRUPAL_ROOT,
+    'examples' => [
+      'webform-libraries-make' => 'Generates libraries YAML to be included in a drush.make.yml file.',
+    ],
+    'aliases' => ['wflm'],
+  ];
+
+  $items['webform-libraries-composer'] = [
+    'description' => "Generates the Webform module's composer.json with libraries as repositories.",
+    'core' => ['8+'],
+    'bootstrap' => DRUSH_BOOTSTRAP_DRUPAL_ROOT,
+    'examples' => [
+      'webform-libraries-composer' => "Generates the Webform module's composer.json with libraries as repositories.",
+    ],
+    'aliases' => ['wflc'],
+  ];
+
   $items['webform-libraries-download'] = [
     'description' => 'Download third party libraries required by the Webform module.',
     'core' => ['8+'],
@@ -449,7 +469,7 @@ function drush_webform_libraries_status() {
 
   /** @var \Drupal\webform\WebformLibrariesManagerInterface $libraries_manager */
   $libraries_manager = \Drupal::service('webform.libraries_manager');
-  $requirements = $libraries_manager->requirements();
+  $requirements = $libraries_manager->requirements(TRUE);
   foreach ($requirements as $requirement) {
     $library = $requirement['library'];
     drush_print($library['title'] . ' (' . $library['name'] . ') ' . $requirement['value']);
@@ -457,6 +477,158 @@ function drush_webform_libraries_status() {
     drush_print(strip_tags($requirement['description']));
     drush_print();
   }
+}
+
+/**
+ * Implements drush_hook_COMMAND().
+ */
+function drush_webform_libraries_make() {
+  /** @var \Drupal\webform\WebformLibrariesManagerInterface $libraries_manager */
+  $libraries_manager = \Drupal::service('webform.libraries_manager');
+  $libraries = $libraries_manager->getLibraries(TRUE);
+
+  $data = [
+    'core' => '8.x',
+    'api' => 2,
+    'libraries' => [],
+  ];
+  foreach ($libraries as $library_name => $library) {
+    $url = $library['download_url']->toString();
+    $data['libraries'][$library_name] = [
+      'directory_name' => $library_name,
+      'destination' => 'libraries',
+      'download' => [
+        'type' => 'get',
+        'url' => $url,
+      ],
+    ];
+  }
+
+  drush_print('# This file was generated using the `drush webform-libraries-make` command');
+  drush_print(_drush_webform_libraries_make());
+}
+
+function _drush_webform_libraries_make() {
+  /** @var \Drupal\webform\WebformLibrariesManagerInterface $libraries_manager */
+  $libraries_manager = \Drupal::service('webform.libraries_manager');
+  $libraries = $libraries_manager->getLibraries(TRUE);
+
+  $data = [
+    'core' => '8.x',
+    'api' => 2,
+    'libraries' => [],
+  ];
+  foreach ($libraries as $library_name => $library) {
+    $url = $library['download_url']->toString();
+    $data['libraries'][$library_name] = [
+      'directory_name' => $library_name,
+      'destination' => 'libraries',
+      'download' => [
+        'type' => 'get',
+        'url' => $url,
+      ],
+    ];
+  }
+
+  return Yaml::encode($data);
+}
+
+/**
+ * Implements drush_hook_COMMAND().
+ *
+ * @see How to handle module library dependencies #68
+ * https://github.com/drupal-composer/drupal-project/issues/68
+ */
+function drush_webform_libraries_composer() {
+  /** @var \Drupal\webform\WebformLibrariesManagerInterface $libraries_manager */
+  $libraries_manager = \Drupal::service('webform.libraries_manager');
+  $libraries = $libraries_manager->getLibraries(TRUE);
+
+  // Load existing composer.json file.
+  $data = json_decode('{
+  "name": "drupal/webform",
+  "description": "Enables the creation of webforms and questionnaires.",
+  "type": "drupal-module",
+  "license": "GPL-2.0+",
+  "minimum-stability": "dev",
+  "homepage": "https://drupal.org/project/webform",
+  "authors": [
+    {
+      "name": "Jacob Rockowitz (jrockowitz)",
+      "homepage": "https://www.drupal.org/u/jrockowitz",
+      "role": "Maintainer"
+    }
+  ],
+  "support": {
+    "issues": "https://drupal.org/project/issues/webform",
+    "source": "http://cgit.drupalcode.org/webform"
+  }
+}', TRUE);
+
+  $repositories = [];
+  $require = [];
+  foreach ($libraries as $library_name => $library) {
+    $dist_url = $library['download_url']->toString();
+    $dist_type = (preg_match('/\.zip$/', $dist_url)) ? 'zip' : 'file';
+    $package_version = $library['version'];
+    $package_name = (strpos($library_name, '.') === FALSE) ? "$library_name/$library_name" : str_replace('.', '/', $library_name);
+
+    $repositories[$library_name] = [
+      'type' => 'package',
+      'package' => [
+        'name' => $package_name,
+        'version' => $package_version ,
+        'type' => 'drupal-library',
+        'extra' => [
+          'installer-name' => $library_name,
+        ],
+        'dist' => [
+          'url' => $dist_url,
+          'type' => $dist_type,
+        ],
+        'require' => [
+          'composer/installers' =>  '~1.0'
+        ],
+      ],
+    ];
+
+    $require[$package_name] = $package_version;
+  }
+  ksort($repositories);
+  ksort($require);
+  $data['repositories'] = $repositories;
+  $data['require'] = $require;
+
+  // Drupal.org test bot is throwing...
+  // Your requirements could not be resolved to an installable set of packages.
+  // @todo Try to be require all libraries so that they can be installed via composer.
+  // $data['require'];
+
+  drush_print(json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
+}
+
+/**
+ * Implements drush_hook_COMMAND().
+ */
+function drush_webform_libraries_download() {
+  // Remove all existing libraries.
+  if (drush_webform_libraries_remove(FALSE)) {
+    drush_print(dt('Removing existing libraries...'));
+  }
+
+  // Create the makefile.
+  $makefile = file_directory_temp() . '/webform.libraries.make.yml';
+  file_put_contents($makefile, _drush_webform_libraries_make());
+
+  // Download libraries using `drush make`.
+  $commandline_args = [$makefile, DRUPAL_ROOT];
+  $commandline_options = ['no-core' => 'no-core'];
+  drush_invoke_process('@self', 'make', $commandline_args, $commandline_options);
+
+  drupal_flush_all_caches();
+
+  // Remove the makefile.
+  file_unmanaged_delete($makefile);
 }
 
 /**
@@ -472,7 +644,7 @@ function drush_webform_libraries_remove($status = TRUE) {
   $libraries_manager = \Drupal::service('webform.libraries_manager');
   $libraries = $libraries_manager->getLibraries();
   foreach ($libraries as $library_name => $library) {
-    $library_path = '/' . $library['destination'] . '/' . $library['directory_name'];
+    $library_path = '/libraries/' . $library_name;
     $library_exists = (file_exists(DRUPAL_ROOT . $library_path)) ? TRUE : FALSE;
     if ($library_exists) {
       $t_args = [
@@ -491,26 +663,6 @@ function drush_webform_libraries_remove($status = TRUE) {
     drupal_flush_all_caches();
   }
   return $removed;
-}
-
-/**
- * Implements drush_hook_COMMAND().
- */
-function drush_webform_libraries_download() {
-  // Remove all existing libraries.
-  if (drush_webform_libraries_remove(FALSE)) {
-    drush_print(dt('Removing existing libraries...'));
-  }
-
-  // Download libraries using drush.
-  $commandline_args = [
-    DRUPAL_ROOT . '/' . drupal_get_path('module', 'webform') . '/webform.libraries.make.yml',
-    DRUPAL_ROOT,
-  ];
-  $commandline_options = ['no-core' => 'no-core'];
-  drush_invoke_process('@self', 'make', $commandline_args, $commandline_options);
-
-  drupal_flush_all_caches();
 }
 
 /******************************************************************************/
@@ -532,6 +684,19 @@ function drush_webform_repair() {
 
   drush_print('Repairing webform settings...');
   _webform_update_webform_settings();
+
+  drush_print('Repairing webform field storage definitions...');
+  _webform_update_field_storage_definitions();
+
+  drush_print('Repairing webform submission storage schema...');
+   _webform_update_webform_submission_storage_schema();
+
+  // Copied from: outside_in_install().
+  drush_print('Repairing quick links...');
+  // @todo Remove in https://www.drupal.org/node/2783791.
+  Cache::invalidateTags(['rendered']);
+  // @todo Remove when that is fixed in https://www.drupal.org/node/2773591.
+  \Drupal::service('cache.discovery')->deleteAll();
 }
 
 /******************************************************************************/
@@ -582,7 +747,9 @@ function drush_webform_docs() {
     'elements' => $help_manager->buildElements(TRUE),
     'addons' => $help_manager->buildAddOns(TRUE),
     'libraries' => $help_manager->buildLibraries(TRUE),
+    'comparison' => $help_manager->buildComparison(TRUE),
   ];
+  $index_html = '<h1>Webform Help</h1><ul>';
   foreach ($help as $help_name => $help_section) {
     unset(
       $help_section['title'],
@@ -592,7 +759,12 @@ function drush_webform_docs() {
     $help_html = \Drupal::service('renderer')->renderPlain($help_section);
     $help_html = _drush_webform_docs_tidy($help_html);
     file_put_contents("$html_directory_path/webform-$help_name.html", $help_html);
+    $index_html .= "<li><a href=\"webform-$help_name.html\">webform-$help_name.html</a></li>";
   }
+  $index_html .= '</ul>';
+  file_put_contents("$html_directory_path/index.html", _drush_webform_docs_tidy($index_html));
+
+  drush_print("Documents generated to '/$html_directory_path'.");
 }
 
 /**
@@ -614,6 +786,9 @@ function _drush_webform_docs_tidy($html) {
   $tidy->parseString($html, $config, 'utf8');
   $tidy->cleanRepair();
   $html = tidy_get_output($tidy);
+
+  // Convert URLs.
+  $html = str_replace('"https://www.drupal.org/', '"/', $html);
 
   // Remove <code> tag nested within <pre> tag.
   $html = preg_replace('#<pre><code>\s*#', "<code>\n", $html);

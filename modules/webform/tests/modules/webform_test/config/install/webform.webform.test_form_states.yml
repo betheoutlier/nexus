@@ -11,6 +11,7 @@ template: false
 id: test_form_states
 title: 'Test: Form API #states'
 description: 'Test Drupal''s #states API states (visible, required, disabled, checked, and expanded).'
+category: 'Test: Form API #states'
 elements: |
   visible:
     '#type': details
@@ -467,7 +468,9 @@ elements: |
       '#selection_handler': 'default:user'
       '#selection_settings':
         include_anonymous: true
-      '#options': null
+      '#options':
+        1: Administrator
+        0: Anonymous
       '#default_value': 1
       '#states':
         visible:
@@ -1375,7 +1378,9 @@ elements: |
       '#selection_handler': 'default:user'
       '#selection_settings':
         include_anonymous: true
-      '#options': null
+      '#options':
+        1: Administrator
+        0: Anonymous
       '#default_value': 1
       '#states':
         invisible:
@@ -2057,7 +2062,9 @@ elements: |
       '#selection_handler': 'default:user'
       '#selection_settings':
         include_anonymous: true
-      '#options': null
+      '#options':
+        1: Administrator
+        0: Anonymous
       '#default_value': 1
       '#states':
         disabled:

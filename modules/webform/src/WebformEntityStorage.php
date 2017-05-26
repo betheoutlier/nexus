@@ -13,7 +13,7 @@ use Symfony\Component\DependencyInjection\ContainerInterface;
 /**
  * Storage controller class for "webform" configuration entities.
  */
-class WebformEntityStorage extends ConfigEntityStorage {
+class WebformEntityStorage extends ConfigEntityStorage implements WebformEntityStorageInterface {
 
   /**
    * Active database connection.
@@ -27,6 +27,12 @@ class WebformEntityStorage extends ConfigEntityStorage {
    *
    * @param \Drupal\Core\Entity\EntityTypeInterface $entity_type
    *   The entity type definition.
+   * @param \Drupal\Core\Config\ConfigFactoryInterface $config_factory
+   *   The config factory service.
+   * @param \Drupal\Component\Uuid\UuidInterface $uuid_service
+   *   The UUID service.
+   * @param \Drupal\Core\Language\LanguageManagerInterface $language_manager
+   *   The language manager.
    * @param \Drupal\Core\Database\Connection $database
    *   The database connection to be used.
    */
@@ -94,4 +100,46 @@ class WebformEntityStorage extends ConfigEntityStorage {
       ->condition('webform_ids', $webform_ids, 'IN')
       ->execute();
   }
+
+  /**
+   * {@inheritdoc}
+   */
+  public function getCategories($template = NULL) {
+    $webforms = $this->loadMultiple();
+    $categories = [];
+    foreach ($webforms as $webform) {
+      if ($template !== NULL && $webform->get('template') != $template) {
+        continue;
+      }
+      if ($category = $webform->get('category')) {
+        $categories[$category] = $category;
+      }
+    }
+    ksort($categories);
+    return $categories;
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public function getOptions($template = NULL) {
+    $webforms = $this->loadMultiple();
+    @uasort($webforms, [$this->entityType->getClass(), 'sort']);
+
+    $uncategorized_options = [];
+    $categorized_options = [];
+    foreach ($webforms as $id => $webform) {
+      if ($template !== NULL && $webform->get('template') != $template) {
+        continue;
+      }
+      if ($category = $webform->get('category')) {
+        $categorized_options[$category][$id] = $webform->label();
+      }
+      else {
+        $uncategorized_options[$id] = $webform->label();
+      }
+    }
+    return $uncategorized_options + $categorized_options;
+  }
+
 }

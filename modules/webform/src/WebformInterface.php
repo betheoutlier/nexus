@@ -76,9 +76,17 @@ interface WebformInterface extends ConfigEntityInterface, EntityWithPluginCollec
    * Determine if the webform is using a Flexbox layout.
    *
    * @return bool
-   *   TRUE if if the webform is using a Flexbox layout.
+   *   TRUE if the webform is using a Flexbox layout.
    */
   public function hasFlexboxLayout();
+
+  /**
+   * Determine if the webform has any containers.
+   *
+   * @return bool
+   *   TRUE if the webform has any containers.
+   */
+  public function hasContainer();
 
   /**
    * Sets the status of the configuration entity.
@@ -516,13 +524,16 @@ interface WebformInterface extends ConfigEntityInterface, EntityWithPluginCollec
    *   (optional) Status used to return enabled or disabled plugin instances
    *   (ie handlers).
    * @param int $results
-   *   (optional) Value indicating if webform submissions are saved to internal or
-   *   external system.
+   *   (optional) Value indicating if webform submissions are saved to internal
+   *   or external system.
+   * @param int $submission
+   *   (optional) Value indicating if webform submissions must be saved to the
+   *   database.
    *
    * @return \Drupal\webform\WebformHandlerPluginCollection|\Drupal\webform\WebformHandlerInterface[]
    *   The webform handler plugin collection.
    */
-  public function getHandlers($plugin_id = NULL, $status = NULL, $results = NULL);
+  public function getHandlers($plugin_id = NULL, $status = NULL, $results = NULL, $submission = NULL);
 
   /**
    * Saves a webform handler for this webform.

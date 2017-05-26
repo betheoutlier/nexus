@@ -12,6 +12,7 @@ use Drupal\Core\StringTranslation\StringTranslationTrait;
 use Drupal\Core\Path\PathMatcherInterface;
 use Drupal\Core\Url;
 use Drupal\webform\Element\WebformMessage;
+use Drupal\webform\Utility\WebformArrayHelper;
 
 /**
  * Webform help manager.
@@ -493,9 +494,17 @@ class WebformHelpManager implements WebformHelpManagerInterface {
         '#prefix' => '<div>',
         '#suffix' => '</div>',
         'description' => [
-          '#markup' => '<p>' . $this->t('The Webform module utilizes the third-party Open Source libraries listed below to enhance webform elements and to provide additional functionality. It is recommended that these libraries be installed in your Drupal installations /libraries directory. If these libraries are not installed, they are automatically loaded from a CDN.') . '</p>' .
-          '<p>' . $this->t('Currently the best way to download all the needed third party libraries is to either add <a href=":href">webform.libraries.make.yml</a> to your drush make file or execute the below drush command from the root of your Drupal installation.', [':href' => 'http://cgit.drupalcode.org/webform/tree/webform.libraries.make.yml?h=8.x-5.x']) . '</p>' .
-          '<hr/><pre>drush webform-libraries-download</pre><hr/><br/>',
+          '#markup' => '<p>' . $this->t('The Webform module utilizes the third-party Open Source libraries listed below to enhance webform elements and to provide additional functionality.') . ' ' .
+            $this->t('It is recommended that these libraries be installed in your Drupal installations /libraries directory.') . ' ' .
+            $this->t('If these libraries are not installed, they are automatically loaded from a CDN.') . ' ' .
+            $this->t('All libraries are optional and can be excluded via the admin settings form.') .
+            '</p>' .
+            '<p>' . $this->t('There are twos ways to download the needed third party libraries.') . '</p>' .
+            '<ul>' .
+              '<li>' . $this->t('Generate a *.make.yml or composer.json file using <code>drush webform-libraries-make</code> or <code>drush webform-libraries-composer</code>.') . '</li>' .
+              '<li>' . $this->t('Execute <code>drush webform-libraries-download</code> which will download all included libraries.') . '</li>' .
+            '</ul>' .
+            '<hr/>',
         ],
         'libraries' => [
           '#prefix' => '<dl>',
@@ -505,23 +514,155 @@ class WebformHelpManager implements WebformHelpManagerInterface {
     ];
     $libraries = $this->librariesManager->getLibraries();
     foreach ($libraries as $library_name => $library) {
+      // Get required elements.
+      $elements = [];
+      if (!empty($library['elements'])) {
+        foreach ($library['elements'] as $element_name) {
+          $element = $this->elementManager->getDefinition($element_name);
+          $elements[] = $element['label'];
+        }
+      }
+
       $build['content']['libraries'][$library_name] = [
         'title' => [
           '#type' => 'link',
           '#title' => $library['title'],
-          '#url' => $library['url'],
+          '#url' => $library['homepage_url'],
           '#prefix' => '<dt>',
-          '#suffix' => '</dt>',
+          '#suffix' => ' (' . $library['version'] . ')</dt>',
         ],
         'description' => [
-          '#markup' => $library['description'] . '<br/><em>(' . $library['notes'] . ')</em>',
+          'content' => [
+            '#markup' => $library['description'],
+            '#suffix' => '<br/>'
+          ],
+          'notes' => [
+            '#markup' => $library['notes'] .
+              ($elements ? ' <strong>' . $this->t('Required by @type @elements.', ['@type' => WebformArrayHelper::toString($elements), '@elements' => $this->formatPlural(count($elements), $this->t('element'), $this->t('elements'))]) . '</strong>': ''),
+            '#prefix' => '<em>(',
+            '#suffix' => ')</em><br/>'
+          ],
+          'download' => [
+            '#type' => 'link',
+            '#title' => $library['download_url']->toString(),
+            '#url' => $library['download_url'],
+          ],
           '#prefix' => '<dd>',
           '#suffix' => '</dd>',
         ],
       ];
+      if ($docs) {
+        $build['content']['libraries'][$library_name]['title']['#suffix'] = '</dt>';
+        unset($build['content']['libraries'][$library_name]['description']['download']);
+      }
+
     }
     return $build;
   }
+
+  /**
+   * {@inheritdoc}
+   */
+  public function buildComparison($docs = FALSE) {
+    // @see core/themes/seven/css/components/colors.css
+    $group_color = '#dcdcdc';
+    $feature_color = '#f5f5f5';
+    $yes_color = '#d7ffd8';
+    $no_color = '#ffffdd';
+    $custom_color = '#ffece8';
+
+    $content = file_get_contents('https://docs.google.com/spreadsheets/d/1zNt3WsKxDq2ZmMHeYAorNUUIx5_yiDtDVUIKXtXaq4s/pubhtml?gid=0&single=true');
+    if (preg_match('#<table[^>]+>.*</table>#', $content, $match)) {
+      $html = $match[0];
+    }
+    else {
+      return [];
+    }
+
+    // Remove all attributes.
+    $html = preg_replace('#(<[a-z]+) [^>]+>#', '\1>', $html);
+    // Remove thead.
+    $html = preg_replace('#<thead>.*</thead>#', '', $html);
+    // Remove first th cell.
+    $html = preg_replace('#<tr><th>.*?</th>#', '<tr>', $html);
+    // Remove empty rows
+    $html = preg_replace('#<tr>(<td></td>)+?</tr>#', '', $html);
+    // Remove empty links
+    $html = str_replace('<a>', '', $html);
+    $html = str_replace('</a>', '', $html);
+
+    // Add border and padding to table.
+    if ($docs) {
+      $html = str_replace('<table>', '<table border="1" cellpadding="2" cellspacing="1">', $html);
+    }
+
+    // Convert first row into <thead> with <th>.
+    $html = preg_replace(
+      '#<tbody><tr><td>(.+?)</td><td>(.+?)</td><td>(.+?)</td></tr>#',
+      '<thead><tr><th width="30%">\1</th><th width="35%">\2</th><th width="35%">\3</th></thead><tbody>',
+      $html
+    );
+
+    // Convert groups.
+    $html = preg_replace('#<tr><td>([^<]+)</td>(<td></td>){2}</tr>#', '<tr><th bgcolor="' . $group_color . '">\1</th><th bgcolor="' . $group_color . '">Webform Module</th><th bgcolor="' . $group_color . '">Contact Module</th></tr>', $html);
+
+    // Add cell colors
+    $html = preg_replace('#<tr><td>([^<]+)</td>#', '<tr><td bgcolor="' . $feature_color . '">\1</td>', $html);
+    $html = preg_replace('#<td>Yes([^<]*)</td>#', '<td bgcolor="' . $yes_color . '"><img src="https://www.drupal.org/misc/watchdog-ok.png" alt="Yes"> \1</td>', $html);
+    $html = preg_replace('#<td>No([^<]*)</td>#', '<td bgcolor="' . $custom_color . '"><img src="https://www.drupal.org/misc/watchdog-error.png" alt="No"> \1</td>', $html);
+    $html = preg_replace('#<td>([^<]*)</td>#', '<td bgcolor="' . $no_color . '"><img src="https://www.drupal.org/misc/watchdog-warning.png" alt="Warning"> \1</td>', $html);
+
+    // Convert URLs to links with titles.
+    $links = [
+      'https://www.drupal.org/docs/8/modules/webform' => $this->t('Webform Documentation'),
+      'https://www.drupal.org/docs/8/core/modules/contact/overview' => $this->t('Contact Documentation'),
+      'https://www.drupal.org/docs/8/modules/webform/webform-videos' => $this->t('Webform Videos'),
+      'https://www.drupal.org/docs/8/modules/webform/webform-cookbook' => $this->t('Webform Cookbook'),
+      'https://www.drupal.org/project/project_module?text=signature' => $this->t('Signature related-projects'),
+    ];
+    foreach ($links as $link_url => $link_title) {
+      $html = preg_replace('#([^"/])' . preg_quote($link_url, '#') . '([^"/])#', '\1<a href="' . $link_url . '">' . $link_title . '</a>\2', $html);
+    }
+
+    // Create fake filter object with settings.
+    $filter = (object) ['settings' => ['filter_url_length' => 255]];
+    $html = _filter_url($html, $filter);
+
+    // Link *,module.
+    $html = preg_replace('/([a-z0-9_]+)\.module/', '<a href="https://www.drupal.org/project/\1">\1.module</a>', $html);
+
+    // Tidy
+    if (class_exists('\tidy')) {
+      $tidy = new \tidy();
+      $tidy->parseString($html, ['show-body-only' => TRUE, 'wrap' => '0'], 'utf8');
+      $tidy->cleanRepair();
+      $html = tidy_get_output($tidy);
+    }
+
+    return [
+      'title' => [
+        '#markup' => $this->t('Form builder comparison'),
+        '#prefix' => '<h3 id="comparison">',
+        '#suffix' => '</h3>',
+      ],
+      'content' => [
+        '#prefix' => '<div>',
+        '#suffix' => '</div>',
+        'description' => [
+          '#markup' => '<p>' . $this->t("Here is a detailed feature-comparison of Webform 8.x-5.x and Contact Storage 8.x-1.x.&nbsp;It's worth noting that Contact Storage relies on the Contact module which in turn relies on the Field UI; Contact Storage out of the box is a minimalistic solution with limited (but useful!) functionality. This means it can be extended with core mechanisms such as CRUD entity hooks and overriding services; also there's a greater chance that a general purpose module will play nicely with it (eg. the Conditional Fields module is for entity form displays in general, not the Contact module).") . '</p>' .
+            '<p>' . $this->t("Webform is much heavier; it has a great deal of functionality enabled right within the one module, and that's on top of supplying all the normal field elements (because it doesn't just use the Field API)") . '</p>',
+        ],
+        'table' => ['#markup' => $html],
+        'google' => [
+          '#markup' => '<p>' . $this->t('Please post comments and feedback to this <a href=":href">Google Sheet</a>.', [':href' => 'https://docs.google.com/spreadsheets/d/1zNt3WsKxDq2ZmMHeYAorNUUIx5_yiDtDVUIKXtXaq4s/edit?usp=sharing']) . '</p>',
+        ],
+      ],
+    ];
+  }
+
+  /****************************************************************************/
+  // Videos.
+  /****************************************************************************/
 
   /**
    * {@inheritdoc}

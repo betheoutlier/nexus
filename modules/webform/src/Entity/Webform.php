@@ -2,6 +2,7 @@
 
 namespace Drupal\webform\Entity;
 
+use Drupal\Core\Config\Entity\ConfigEntityInterface;
 use Drupal\Core\Serialization\Yaml;
 use Drupal\Core\Config\Entity\ConfigEntityBundleBase;
 use Drupal\Core\Entity\EntityStorageInterface;
@@ -77,6 +78,7 @@ use Drupal\webform\WebformSubmissionStorageInterface;
  *     "uuid",
  *     "title",
  *     "description",
+ *     "category",
  *     "elements",
  *     "css",
  *     "javascript",
@@ -88,6 +90,7 @@ use Drupal\webform\WebformSubmissionStorageInterface;
  *   lookup_keys = {
  *     "status",
  *     "template",
+ *     "category",
  *   },
  * )
  */
@@ -150,6 +153,13 @@ class Webform extends ConfigEntityBundleBase implements WebformInterface {
    * @var string
    */
   protected $description;
+
+  /**
+   * The webform options category.
+   *
+   * @var string
+   */
+  protected $category;
 
   /**
    * The owner's uid.
@@ -276,6 +286,13 @@ class Webform extends ConfigEntityBundleBase implements WebformInterface {
    * @var bool
    */
   protected $hasFlexboxLayout = FALSE;
+
+  /**
+   * Track if the webform has container.
+   *
+   * @var bool
+   */
+  protected $hasContainer = FALSE;
 
   /**
    * Track if the webform has translations.
@@ -487,6 +504,14 @@ class Webform extends ConfigEntityBundleBase implements WebformInterface {
   public function hasFlexboxLayout() {
     $this->initElements();
     return $this->hasFlexboxLayout;
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public function hasContainer() {
+    $this->initElements();
+    return $this->hasContainer;
   }
 
   /**
@@ -915,6 +940,7 @@ class Webform extends ConfigEntityBundleBase implements WebformInterface {
 
     $this->hasManagedFile = FALSE;
     $this->hasFlexboxLayout = FALSE;
+    $this->hasContainer = FALSE;
     $this->elementsDecodedAndFlattened = [];
     $this->elementsInitializedAndFlattened = [];
     $this->elementsInitializedFlattenedAndHasValue = [];
@@ -941,7 +967,7 @@ class Webform extends ConfigEntityBundleBase implements WebformInterface {
       $this->elementsDecoded = $elements;
     }
     catch (\Exception $exception) {
-      $link = $this->link(t('Edit'), 'edit-form');
+      $link = $this->link($this->t('Edit'), 'edit-form');
       \Drupal::logger('webform')
         ->notice('%title elements are not valid. @message', [
           '%title' => $this->label(),
@@ -966,6 +992,7 @@ class Webform extends ConfigEntityBundleBase implements WebformInterface {
     $this->pages = NULL;
     $this->hasManagedFile = NULL;
     $this->hasFlexboxLayout = NULL;
+    $this->hasContainer = NULL;
     $this->elementsDecoded = NULL;
     $this->elementsInitialized = NULL;
     $this->elementsDecodedAndFlattened = NULL;
@@ -1053,6 +1080,11 @@ class Webform extends ConfigEntityBundleBase implements WebformInterface {
         // Track flexbox.
         if ($element['#type'] == 'flexbox' || $element['#type'] == 'webform_flexbox') {
           $this->hasFlexboxLayout = TRUE;
+        }
+
+        // Track container.
+        if ($element_handler->isContainer($element)) {
+          $this->hasContainer = TRUE;
         }
 
         $element['#webform_multiple'] = $element_handler->hasMultipleValues($element);
@@ -1277,6 +1309,30 @@ class Webform extends ConfigEntityBundleBase implements WebformInterface {
   /**
    * {@inheritdoc}
    */
+  public function createDuplicate() {
+    /** @var \Drupal\webform\WebformInterface $duplicate */
+    $duplicate = parent::createDuplicate();
+
+    // If template, clear the  description, remove template flag,
+    // and remove webform_templates.module dependency.
+    if ($duplicate->isTemplate()) {
+      $duplicate->set('description', '');
+      $duplicate->set('template', FALSE);
+
+      if (isset($duplicate->dependencies['enforced']['module']) && $duplicate->dependencies['enforced']['module'] == ['webform_templates']) {
+        unset($duplicate->dependencies['enforced']['module']);
+        if (empty($duplicate->dependencies['enforced'])) {
+          unset($duplicate->dependencies['enforced']);
+        }
+      }
+    }
+
+    return $duplicate;
+  }
+
+  /**
+   * {@inheritdoc}
+   */
   public static function preCreate(EntityStorageInterface $storage, array &$values) {
     $values += [
       'status' => WebformInterface::STATUS_OPEN,
@@ -1457,14 +1513,14 @@ class Webform extends ConfigEntityBundleBase implements WebformInterface {
   /**
    * {@inheritdoc}
    */
-  public function getHandler($handler) {
-    return $this->getHandlers()->get($handler);
+  public function getHandler($handler_id) {
+    return $this->getHandlers()->get($handler_id);
   }
 
   /**
    * {@inheritdoc}
    */
-  public function getHandlers($plugin_id = NULL, $status = NULL, $results = NULL) {
+  public function getHandlers($plugin_id = NULL, $status = NULL, $results = NULL, $submission = NULL) {
     if (!$this->handlersCollection) {
       $this->handlersCollection = new WebformHandlerPluginCollection($this->getWebformHandlerPluginManager(), $this->handlers);
       /** @var \Drupal\webform\WebformHandlerBase $handler */
@@ -1510,6 +1566,17 @@ class Webform extends ConfigEntityBundleBase implements WebformInterface {
       foreach ($handlers as $instance_id => $handler) {
         $plugin_definition = $handler->getPluginDefinition();
         if ($plugin_definition['results'] != $results) {
+          $handlers->removeInstanceId($instance_id);
+        }
+      }
+    }
+
+    // Filter the handlers by submission.
+    // This is used to track is submissions must be saved to the database.
+    if (isset($submission)) {
+      foreach ($handlers as $instance_id => $handler) {
+        $plugin_definition = $handler->getPluginDefinition();
+        if ($plugin_definition['submission'] != $submission) {
           $handlers->removeInstanceId($instance_id);
         }
       }
@@ -1703,6 +1770,15 @@ class Webform extends ConfigEntityBundleBase implements WebformInterface {
       }
     }
     return $changed;
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public static function sort(ConfigEntityInterface $a, ConfigEntityInterface $b) {
+    $a_label = $a->get('category') . $a->label();
+    $b_label = $b->get('category') . $b->label();
+    return strnatcasecmp($a_label, $b_label);
   }
 
   /**

@@ -208,7 +208,9 @@ ui:
   dialog_disabled: false
   offcanvas_disabled: false
   html_editor_disabled: false
-library:
+libraries:
+  excluded_libraries:
+    - jquery.chosen
   cdn: false
 langcode: en
 third_party_settings: {  }

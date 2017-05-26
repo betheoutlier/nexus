@@ -11,6 +11,7 @@ template: false
 id: test_element_html_escape
 title: 'Test: Element: HTML escaping'
 description: 'Test element HTML escaping support'
+category: 'Test: Element'
 elements: |
   basic_elements:
     '#type': details
@@ -473,7 +474,9 @@ elements: |
       '#selection_handler': 'default:user'
       '#selection_settings':
         include_anonymous: true
-      '#options': null
+      '#options':
+        1: Administrator
+        0: Anonymous
     webform_entity_select:
       '#type': webform_entity_select
       '#title': 'Entity select | <script>alert(''This markup is not escaped properly!!!'') </script>'

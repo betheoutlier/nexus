@@ -74,6 +74,9 @@ class WebformEntitySettingsForm extends EntityForm {
     /** @var \Drupal\webform\WebformInterface $webform */
     $webform = $this->entity;
 
+    // Set message manager's webform.
+    $this->messageManager->setWebform($webform);
+
     $default_settings = $this->config('webform.settings')->get('settings');
     $settings = $webform->getSettings();
 
@@ -102,6 +105,15 @@ class WebformEntitySettingsForm extends EntityForm {
       '#title' => $this->t('Administrative description'),
       '#default_value' => $webform->get('description'),
     ];
+    /** @var \Drupal\webform\WebformEntityStorageInterface $webform_storage */
+    $webform_storage = $this->entityTypeManager->getStorage('webform');
+    $form['general']['category'] = [
+      '#type' => 'webform_select_other',
+      '#title' => $this->t('Category'),
+      '#options' => $webform_storage->getCategories(),
+      '#empty_option' => '<' . $this->t('None') . '>',
+      '#default_value' => $webform->get('category'),
+    ];
     $form['general']['template'] = [
       '#type' => 'checkbox',
       '#title' => $this->t('Allow this webform to be used as a template.'),
@@ -117,10 +129,25 @@ class WebformEntitySettingsForm extends EntityForm {
       '#return_value' => TRUE,
       '#default_value' => $settings['results_disabled'],
     ];
+
+    // Display warning when submission handler requires submissions to be saved
+    // to the database.
+    $is_submission_required = $webform->getHandlers(NULL, TRUE, WebformHandlerInterface::SUBMISSION_REQUIRED)->count();
+    if ($is_submission_required) {
+      $form['general']['results_disabled']['#default_value'] = FALSE;
+      $form['general']['results_disabled']['#disabled'] = TRUE;
+      unset($form['general']['results_disabled']['#description']);
+      $form['general']['results_disabled_required'] = [
+        '#type' => 'webform_message',
+        '#message_type' => 'warning',
+        '#message_message' => $this->messageManager->get(WebformMessageManagerInterface::HANDLER_SUBMISSION_REQUIRED),
+      ];
+    }
+
     // Display warning when disabling the saving of submissions with no
     // handlers.
-    if (!$webform->getHandlers(NULL, TRUE, WebformHandlerInterface::RESULTS_PROCESSED)->count()) {
-      $this->messageManager->setWebform($webform);
+    $is_results_processed = $webform->getHandlers(NULL, TRUE, WebformHandlerInterface::RESULTS_PROCESSED)->count();
+    if (!$is_results_processed) {
       $form['general']['results_disabled_error'] = [
         '#type' => 'webform_message',
         '#message_type' => 'warning',
@@ -1023,6 +1050,7 @@ class WebformEntitySettingsForm extends EntityForm {
       $values['id'],
       $values['title'],
       $values['description'],
+      $values['category'],
       $values['template'],
       $values['status'],
       $values['open'],
@@ -1044,7 +1072,12 @@ class WebformEntitySettingsForm extends EntityForm {
     // Save the webform.
     $webform->save();
 
-    $this->logger('webform')->notice('Webform settings @label saved.', ['@label' => $webform->label()]);
+    $context = [
+      '@label' => $webform->label(),
+      'link' => $webform->toLink($this->t('Edit'), 'settings-form')->toString()
+    ];
+    $this->logger('webform')->notice('Webform settings @label saved.', $context);
+
     drupal_set_message($this->t('Webform settings %label saved.', ['%label' => $webform->label()]));
   }
 
