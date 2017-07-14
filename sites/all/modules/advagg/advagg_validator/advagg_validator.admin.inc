@@ -6,10 +6,31 @@
  */
 
 /**
+ * @addtogroup default_variables
+ * @{
+ */
+
+/**
+ * Default version of csslint to use.
+ */
+define('ADVAGG_VALIDATOR_GITHUB_VERSION_CSSLINT', '1.0.5');
+
+/**
+ * Default version of jshint to use.
+ */
+define('ADVAGG_VALIDATOR_GITHUB_VERSION_JSHINT', '2.9.4');
+
+/**
+ * @} End of "addtogroup default_variables".
+ */
+
+/**
  * Form builder; CSS validator via w3.
  *
  * @return array
  *   form array.
+ *
+ * @ingroup advagg_forms
  */
 function advagg_validator_admin_css_w3_form() {
   drupal_set_title(t('AdvAgg: CSS Validator using w3.org'));
@@ -30,19 +51,34 @@ function advagg_validator_admin_css_w3_form() {
  *
  * @return array
  *   form array.
+ *
+ * @ingroup advagg_forms
  */
 function advagg_validator_admin_css_lint_form() {
   drupal_set_title(t('AdvAgg: CSS Validator using CSSLINT'));
 
   $form = advagg_validator_admin_form_generator('css', TRUE);
 
+  $version = variable_get('advagg_validator_github_version_csslint', ADVAGG_VALIDATOR_GITHUB_VERSION_CSSLINT);
   $form['#attached']['js'][] = array(
-    'data' => '//rawgithub.com/stubbornella/csslint/master/release/csslint.js',
+    // https://github.com/CSSLint/csslint.
+    'data' => "//cdn.rawgit.com/CSSLint/csslint/v$version/dist/csslint.js",
     'type' => 'external',
   );
   $form['#attached']['js'][] = array(
     'data' => drupal_get_path('module', 'advagg_validator') . '/advagg_validator.js',
     'type' => 'file',
+  );
+
+  // Comma separated code.
+  // https://github.com/CSSLint/csslint/wiki/Command-line-interface#--ignore
+  $ignore_list = variable_get('advagg_validator_csslint_ignore', ADVAGG_VALIDATOR_CSSLINT_IGNORE);
+  if (is_array($ignore_list)) {
+    $ignore_list = implode(',', $ignore_list);
+  }
+  $form['#attached']['js'][] = array(
+    'data' => array('csslint' => array('ignore' => $ignore_list)),
+    'type' => 'setting',
   );
 
   return $form;
@@ -53,14 +89,18 @@ function advagg_validator_admin_css_lint_form() {
  *
  * @return array
  *   form array.
+ *
+ * @ingroup advagg_forms
  */
 function advagg_validator_admin_js_hint_form() {
   drupal_set_title(t('AdvAgg: JavaScript Validator using JSHINT'));
 
   $form = advagg_validator_admin_form_generator('js', TRUE);
 
+  $version = variable_get('advagg_validator_github_version_jshint', ADVAGG_VALIDATOR_GITHUB_VERSION_JSHINT);
   $form['#attached']['js'][] = array(
-    'data' => '//rawgithub.com/jshint/jshint/master/dist/jshint.js',
+    // https://github.com/jshint/jshint.
+    'data' => "//cdn.rawgit.com/jshint/jshint/$version/dist/jshint.js",
     'type' => 'external',
   );
   $form['#attached']['js'][] = array(
@@ -93,6 +133,15 @@ function advagg_validator_admin_js_hint_form() {
       'CKEDITOR' => FALSE,
     ),
   );
+
+  // Comma separated code.
+  // https://jslinterrors.com/
+  $ignore_list = variable_get('advagg_validator_jshint_ignore', ADVAGG_VALIDATOR_JSHINT_IGNORE);
+  if (is_array($ignore_list)) {
+    $ignore_list = implode(',', $ignore_list);
+  }
+  $settings['ignore'] = $ignore_list;
+
   $form['#attached']['js'][] = array(
     'data' => array('jshint' => $settings),
     'type' => 'setting',
@@ -105,7 +154,7 @@ function advagg_validator_admin_js_hint_form() {
  * Scan the file system and build a form tree from it.
  *
  * @param string $type
- *   css or js
+ *   String: css or js.
  * @param bool $run_client_side
  *   Set to TRUE to run the checking code client side.
  *
@@ -122,11 +171,11 @@ function advagg_validator_admin_form_generator($type, $run_client_side) {
     $dir = dirname($file);
 
     // Build the direcotry structure.
-    $levels = explode('/', $dir == '.' ? '{ROOT}' : $dir);
+    $levels = explode('/', $dir === '.' ? '{ROOT}' : $dir);
     $point = &$form;
     $built = array();
     foreach ($levels as $key => $value) {
-      // Build direcotry structure,
+      // Build direcotry structure.
       $built[] = $value;
       $point = &$point[$value];
       if (!is_array($point)) {
@@ -141,7 +190,7 @@ function advagg_validator_admin_form_generator($type, $run_client_side) {
           '#collapsed' => TRUE,
           '#weight' => 100,
         );
-        if (!isset($point['check_all_levels']) && $value != '{ROOT}') {
+        if (!isset($point['check_all_levels']) && $value !== '{ROOT}') {
           $point['check_all_levels'] = array(
             '#type' => 'submit',
             '#value' => t('Check this Directory and all Subdirectories: @dirname', array('@dirname' => implode('/', $built))),
@@ -232,14 +281,18 @@ function advagg_validator_admin_form_generator($type, $run_client_side) {
   return $form;
 }
 
-
-// Submit callbacks.
 /**
- * Display file info in a drupal message.
+ * @addtogroup advagg_forms_callback
+ * @{
+ */
+
+/**
+ * Submit callback, display file info in a drupal message.
  */
 function advagg_validator_admin_test_advagg_css_submit($form, &$form_state) {
   module_load_include('inc', 'advagg_validator', 'advagg_validator');
 
+  // @codingStandardsIgnoreLine
   if (!empty($form_state['input']['ajax_page_state'])) {
     return;
   }
@@ -282,6 +335,7 @@ function advagg_validator_admin_test_advagg_css_callback($form, &$form_state) {
  * Display file info in a drupal message.
  */
 function advagg_validator_admin_test_advagg_css_directory_submit($form, &$form_state) {
+  // @codingStandardsIgnoreLine
   if (!empty($form_state['input']['ajax_page_state']) || empty($form_state['values']['op']) || strpos($form_state['values']['op'], t('Check this Directory:')) !== 0) {
     return;
   }
@@ -293,7 +347,7 @@ function advagg_validator_admin_test_advagg_css_directory_submit($form, &$form_s
   // Get list of files.
   $files = array();
   foreach ($form_state['values'] as $key => $value) {
-    if (strpos($key, 'hidden') === FALSE || strpos($value, $dir) === FALSE || substr_count($value, '/') > $slash_count || ($dir == '.' && substr_count($value, '/') > 0)) {
+    if (strpos($key, 'hidden') === FALSE || strpos($value, $dir) === FALSE || substr_count($value, '/') > $slash_count || ($dir === '.' && substr_count($value, '/') > 0)) {
       continue;
     }
     $files[] = $value;
@@ -327,7 +381,7 @@ function advagg_validator_admin_test_advagg_css_directory_callback($form, &$form
   // Get list of files.
   $files = array();
   foreach ($form_state['values'] as $key => $value) {
-    if (strpos($key, 'hidden') === FALSE || strpos($value, $dir) === FALSE || substr_count($value, '/') > $slash_count || ($dir == '.' && substr_count($value, '/') > 0)) {
+    if (strpos($key, 'hidden') === FALSE || strpos($value, $dir) === FALSE || substr_count($value, '/') > $slash_count || ($dir === '.' && substr_count($value, '/') > 0)) {
       continue;
     }
     $files[] = $value;
@@ -335,6 +389,7 @@ function advagg_validator_admin_test_advagg_css_directory_callback($form, &$form
 
   // Check list.
   $info = advagg_validator_test_css_files($files);
+  $wrapper = '';
   if (empty($info)) {
     return '<div id="' . $wrapper . '" class="results"></div>';
   }
@@ -355,18 +410,18 @@ function advagg_validator_admin_test_advagg_css_directory_callback($form, &$form
  * Display file info in a drupal message.
  */
 function advagg_validator_admin_test_advagg_css_subdirectory_submit($form, &$form_state) {
+  // @codingStandardsIgnoreLine
   if (!empty($form_state['input']['ajax_page_state']) || empty($form_state['values']['op']) || strpos($form_state['values']['op'], t('Check this Directory and all Subdirectories:')) !== 0) {
     return;
   }
   module_load_include('inc', 'advagg_validator', 'advagg_validator');
 
   $dir = trim(substr($form_state['values']['op'], strpos($form_state['values']['op'], ':') + 1));
-  $slash_count = substr_count('/' . $dir, '/');
 
   // Get list of files.
   $files = array();
   foreach ($form_state['values'] as $key => $value) {
-    if (strpos($key, 'hidden') === FALSE || strpos($value, $dir) === FALSE || ($dir == '.' && substr_count($value, '/') > 0)) {
+    if (strpos($key, 'hidden') === FALSE || strpos($value, $dir) === FALSE || ($dir === '.' && substr_count($value, '/') > 0)) {
       continue;
     }
     $files[] = $value;
@@ -395,12 +450,11 @@ function advagg_validator_admin_test_advagg_css_subdirectory_callback($form, &$f
   module_load_include('inc', 'advagg_validator', 'advagg_validator');
 
   $dir = trim(substr($form_state['values']['op'], strpos($form_state['values']['op'], ':') + 1));
-  $slash_count = substr_count('/' . $dir, '/');
 
   // Get list of files.
   $files = array();
   foreach ($form_state['values'] as $key => $value) {
-    if (strpos($key, 'hidden') === FALSE || strpos($value, $dir) === FALSE || ($dir == '.' && substr_count($value, '/') > 0)) {
+    if (strpos($key, 'hidden') === FALSE || strpos($value, $dir) === FALSE || ($dir === '.' && substr_count($value, '/') > 0)) {
       continue;
     }
     $files[] = $value;
@@ -408,6 +462,7 @@ function advagg_validator_admin_test_advagg_css_subdirectory_callback($form, &$f
 
   // Check list.
   $info = advagg_validator_test_css_files($files);
+  $wrapper = '';
   if (empty($info)) {
     return '<div id="' . $wrapper . '" class="results"></div>';
   }
@@ -430,6 +485,7 @@ function advagg_validator_admin_test_advagg_css_subdirectory_callback($form, &$f
 function advagg_validator_admin_test_all_css_submit($form, &$form_state) {
   module_load_include('inc', 'advagg_validator', 'advagg_validator');
 
+  // @codingStandardsIgnoreLine
   if (!empty($form_state['input']['ajax_page_state'])) {
     return;
   }
@@ -469,6 +525,10 @@ function advagg_validator_admin_test_all_css_callback($form, &$form_state) {
 }
 
 /**
+ * @} End of "addtogroup advagg_forms_callback".
+ */
+
+/**
  * Do not display info on a file if it is valid.
  *
  * @param array $info
@@ -477,7 +537,7 @@ function advagg_validator_admin_test_all_css_callback($form, &$form_state) {
  * @return array
  *   $info array minus data if that file is valid.
  */
-function advagg_validator_admin_hide_good_files($info) {
+function advagg_validator_admin_hide_good_files(array $info) {
   $output = array();
   foreach ($info as $filename => $validators) {
     foreach ($validators as $v_name => $v_data) {

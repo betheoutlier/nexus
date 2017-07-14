@@ -653,6 +653,13 @@ function drupal_rewrite_settings($settings = array(), $prefix = '') {
     if ($fp && fwrite($fp, $buffer) === FALSE) {
       throw new Exception(st('Failed to modify %settings. Verify the file permissions.', array('%settings' => $settings_file)));
     }
+    else {
+      // The existing settings.php file might have been included already. In
+      // case an opcode cache is enabled, the rewritten contents of the file
+      // will not be reflected in this process. Ensure to invalidate the file
+      // in case an opcode cache is enabled.
+      drupal_clear_opcode_cache(DRUPAL_ROOT . '/' . $settings_file);
+    }
   }
   else {
     throw new Exception(st('Failed to open %settings. Verify the file permissions.', array('%settings' => $default_settings)));
@@ -743,7 +750,7 @@ function drupal_install_system() {
 /**
  * Uninstalls a given list of disabled modules.
  *
- * @param array $module_list
+ * @param string[] $module_list
  *   The modules to uninstall. It is the caller's responsibility to ensure that
  *   all modules in this list have already been disabled before this function
  *   is called.
@@ -762,6 +769,7 @@ function drupal_install_system() {
  *   included in $module_list).
  *
  * @see module_disable()
+ * @see module_enable()
  */
 function drupal_uninstall_modules($module_list = array(), $uninstall_dependents = TRUE) {
   if ($uninstall_dependents) {
@@ -1172,9 +1180,6 @@ function drupal_check_profile($profile) {
 
   $info = install_profile_info($profile);
 
-  // Add the profile as a dependency itself, in order to see if it has requirements as well.
-  $info['dependencies'][] = $profile;
-
   // Collect requirement testing results.
   $requirements = array();
   foreach ($info['dependencies'] as $module) {
@@ -1292,7 +1297,6 @@ function install_profile_info($profile, $locale = 'en') {
       'version' => NULL,
       'hidden' => FALSE,
       'php' => DRUPAL_MINIMUM_PHP,
-      'php_memory_limit' => DRUPAL_MINIMUM_PHP_MEMORY_LIMIT,
     );
     $info = drupal_parse_info_file("profiles/$profile/$profile.info") + $defaults;
     $info['dependencies'] = array_unique(array_merge(
