@@ -53,8 +53,11 @@ function mailsystem_update_7300() {
   // involved classes by parsing the filename of the generated classes. We use
   // the derived class names for building up the settings for the newly
   // introduced delegator class.
-  $class_dir = drupal_realpath(file_build_uri('mailsystem')) . '/';
-  $class_dir = substr($class_dir, strlen(DRUPAL_ROOT) + 1);
+  $class_dir = drupal_realpath(file_build_uri('mailsystem'));
+  if ($class_dir===false) {
+    throw new DrupalUpdateException('The mailsystem class directory could not be located.');
+  }
+  $class_dir = substr($class_dir.'/', strlen(DRUPAL_ROOT) + 1);
   $genclasses = db_select('registry', 'r')
       ->fields('r', array('name', 'filename'))
       ->condition('filename', db_like($class_dir) . '%', 'LIKE')
@@ -64,18 +67,16 @@ function mailsystem_update_7300() {
   $delegate_settings = array();
   $fallback_classes = array();
   foreach ($genclasses as $classname => $filename) {
-    if (substr_compare($filename, $class_dir, 0, $class_dir_len) == 0) {
-      $classes = explode('__', $classname);
-      if (count($classes) == 2) {
-        $delegate_settings[$classname] = array(
-          'format' => $classes[0],
-          'mail' => $classes[1],
-        );
-      }
-      else {
-        $fallback_classes[$classname] = $classname;
-        watchdog('Mail System', 'Cannot update generated mail system class %class. Custom mail system settings using this class are set to the default mail system.', array('%class' => $classname), WATCHDOG_WARNING);
-      }
+    $classes = explode('__', $classname);
+    if (count($classes) == 2) {
+      $delegate_settings[$classname] = array(
+        'format' => $classes[0],
+        'mail' => $classes[1],
+      );
+    }
+    else {
+      $fallback_classes[$classname] = $classname;
+      watchdog('Mail System', 'Cannot update generated mail system class %class. Custom mail system settings using this class are set to the default mail system.', array('%class' => $classname), WATCHDOG_WARNING);
     }
   }
 
