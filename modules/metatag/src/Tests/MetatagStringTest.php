@@ -58,8 +58,9 @@ class MetatagStringTest extends WebTestBase {
     $this->drupalCreateContentType(['type' => 'page', 'display_submitted' => FALSE]);
 
     // Add a Metatag field to the content type.
-    $this->drupalGet("admin/structure/types");
-    $this->drupalGet("admin/structure/types/manage/page/fields/add-field");
+    $this->drupalGet('admin/structure/types');
+    $this->assertResponse(200);
+    $this->drupalGet('admin/structure/types/manage/page/fields/add-field');
     $this->assertResponse(200);
     $edit = [
       'label' => 'Metatag',
@@ -118,11 +119,13 @@ class MetatagStringTest extends WebTestBase {
     $desc_encodeded = htmlentities($desc_encoded, ENT_QUOTES);
 
     // Update the Global defaults and test them.
-    $values = [
+    $this->drupalGet('admin/config/search/metatag/front');
+    $this->assertResponse(200);
+    $edit = [
       'title' => $title_original,
       'description' => $desc_original,
     ];
-    $this->drupalPostForm('admin/config/search/metatag/front', $values, 'Save');
+    $this->drupalPostForm(NULL, $edit, 'Save');
     $this->assertResponse(200);
 
     $metatag_defaults = \Drupal::config('metatag.metatag_defaults.front');
@@ -144,12 +147,14 @@ class MetatagStringTest extends WebTestBase {
     // token value should be correctly translated.
 
     // Create a node.
-    $this->drupalGet("node/add/page");
+    $this->drupalGet('node/add/page');
+    $this->assertResponse(200);
     $edit = [
       'title[0][value]' => $title_original,
       'body[0][value]' => $desc_original,
     ];
-    $this->drupalPostForm("node/add/page", $edit, t('Save and publish'));
+    $save_label = (floatval(\Drupal::VERSION) <= 8.3) ? t('Save and publish') : t('Save');
+    $this->drupalPostForm(NULL, $edit, $save_label);
 
     $this->config('system.site')->set('page.front', '/node/1')->save();
 
@@ -181,6 +186,8 @@ class MetatagStringTest extends WebTestBase {
    * Tests that a specific node string is not double escaped.
    */
   function _testNode($string) {
+    $save_label = (floatval(\Drupal::VERSION) <= 8.3) ? t('Save and publish') : t('Save');
+
     // The original strings.
     $title_original = 'Title: ' . $string;
     $desc_original = 'Description: ' . $string;
@@ -196,11 +203,11 @@ class MetatagStringTest extends WebTestBase {
     // Update the Global defaults and test them.
     $this->drupalGet('admin/config/search/metatag/global');
     $this->assertResponse(200);
-    $values = [
+    $edit = [
       'title' => $title_original,
       'description' => $desc_original,
     ];
-    $this->drupalPostForm(NULL, $values, t('Save'));
+    $this->drupalPostForm(NULL, $edit, t('Save'));
     $this->assertResponse(200);
 
     // Set up a node without explicit metatag description. This causes the
@@ -214,7 +221,7 @@ class MetatagStringTest extends WebTestBase {
       'title[0][value]' => $title_original,
       'body[0][value]' => $desc_original,
     ];
-    $this->drupalPostForm(NULL, $edit, t('Save and publish'));
+    $this->drupalPostForm(NULL, $edit, $save_label);
     $this->assertResponse(200);
 
     // Load the node page.
@@ -251,6 +258,8 @@ class MetatagStringTest extends WebTestBase {
    * Tests that fields with encoded HTML entities will not be double-encoded.
    */
   function _testEncodedField($string) {
+    $save_label = (floatval(\Drupal::VERSION) <= 8.3) ? t('Save and publish') : t('Save');
+
     // The original strings.
     $title_original = 'Title: ' . $string;
     $desc_original = 'Description: ' . $string;
@@ -264,11 +273,11 @@ class MetatagStringTest extends WebTestBase {
     // Update the Global defaults and test them.
     $this->drupalGet('admin/config/search/metatag/global');
     $this->assertResponse(200);
-    $values = [
+    $edit = [
       'title' => $title_original,
       'description' => $desc_original,
     ];
-    $this->drupalPostForm(NULL, $values, t('Save'));
+    $this->drupalPostForm(NULL, $edit, t('Save'));
     $this->assertResponse(200);
 
     // Set up a node without explicit metatag description. This causes the
@@ -282,7 +291,7 @@ class MetatagStringTest extends WebTestBase {
       'title[0][value]' => $title_original,
       'body[0][value]' => $desc_original,
     ];
-    $this->drupalPostForm(NULL, $edit, t('Save and publish'));
+    $this->drupalPostForm(NULL, $edit, $save_label);
     $this->assertResponse(200);
 
     // Load the node page.

@@ -1,6 +1,6 @@
 /**
  * @file
- * Javascript behaviors for Chosen integration.
+ * JavaScript behaviors for Chosen integration.
  */
 
 (function ($, Drupal) {
@@ -17,7 +17,7 @@
    *
    * @type {Drupal~behavior}
    */
-  Drupal.behaviors.webformChosem = {
+  Drupal.behaviors.webformChosen = {
     attach: function (context) {
       if (!$.fn.chosen) {
         return;

@@ -6,8 +6,6 @@ use DOMDocument;
 use Drupal\Core\Config\ConfigFactoryInterface;
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\Core\Render\RendererInterface;
-use Drupal\Core\State\StateInterface;
-use Drupal\Component\Utility\Crypt;
 use GuzzleHttp\Client;
 use GuzzleHttp\Exception\RequestException;
 use Symfony\Component\DependencyInjection\ContainerInterface;
@@ -40,8 +38,8 @@ class CssW3Form extends BaseValidatorForm {
    * @param \Drupal\Core\Render\RendererInterface $renderer
    *   The Drupal renderer.
    */
-  public function __construct(ConfigFactoryInterface $config_factory, StateInterface $advagg_files, StateInterface $advagg_aggregates, RequestStack $request_stack, Client $http_client, RendererInterface $renderer) {
-    parent::__construct($config_factory, $advagg_files, $advagg_aggregates, $request_stack);
+  public function __construct(ConfigFactoryInterface $config_factory, RequestStack $request_stack, Client $http_client, RendererInterface $renderer) {
+    parent::__construct($config_factory, $request_stack);
     $this->requestStack = $request_stack;
     $this->httpClient = $http_client;
     $this->renderer = $renderer;
@@ -53,8 +51,6 @@ class CssW3Form extends BaseValidatorForm {
   public static function create(ContainerInterface $container) {
     return new static(
       $container->get('config.factory'),
-      $container->get('state.advagg.files'),
-      $container->get('state.advagg.aggregates'),
       $container->get('request_stack'),
       $container->get('http_client'),
       $container->get('renderer')
@@ -149,27 +145,12 @@ class CssW3Form extends BaseValidatorForm {
    */
   protected function testFiles(array $files, array $options = []) {
     $output = [];
-    $file_info = $this->advaggFiles->getMultiple($files);
     foreach ($files as $filename) {
       // Skip missing files.
       if (!file_exists($filename)) {
         continue;
       }
-
-      $file_contents = file_get_contents($filename);
       $lines = file($filename);
-      $content_hash = Crypt::hashBase64($file_contents);
-
-      // If saved file information not current update filestore.
-      if ($file_info[$filename]['content_hash'] != $content_hash) {
-        $this->advagg_files->scanFile($filename, $file_info[$filename], $file_contents);
-      }
-
-      // If saved validation results available use them rather than re-run.
-      if (isset($file_info[$filename]['validation']['w3'])) {
-        $output[$filename]['jigsaw.w3.org'] = $file_info[$filename]['validation']['w3'];
-        continue;
-      }
 
       // Run jigsaw.w3.org validator.
       $output[$filename]['jigsaw.w3.org'] = $this->testW3C($filename, $options);
@@ -200,7 +181,6 @@ class CssW3Form extends BaseValidatorForm {
 
       // Save data.
       $file_info[$filename]['validation']['w3'] = $output[$filename]['jigsaw.w3.org'];
-      $this->advaggFiles->set($filename, $file_info[$filename]);
     }
     return $output;
   }

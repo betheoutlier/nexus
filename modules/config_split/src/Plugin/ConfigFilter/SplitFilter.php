@@ -9,7 +9,7 @@ use Drupal\Core\Config\FileStorage;
 use Drupal\Core\Config\ImmutableConfig;
 use Drupal\Core\Config\StorageInterface;
 use Drupal\Core\Database\Connection;
-use Drupal\Core\Database\Database;
+use Drupal\Core\DependencyInjection\DependencySerializationTrait;
 use Drupal\Core\Plugin\ContainerFactoryPluginInterface;
 use Drupal\Component\PhpStorage\FileStorage as PhpFileStorage;
 use Symfony\Component\DependencyInjection\ContainerInterface;
@@ -21,10 +21,12 @@ use Symfony\Component\DependencyInjection\ContainerInterface;
  *   id = "config_split",
  *   label = @Translation("Config Split"),
  *   storages = {"config.storage.sync"},
- *   deriver = "\Drupal\config_split\Plugin\Derivative\SplitFilter"
+ *   deriver = "\Drupal\config_split\Plugin\ConfigFilter\SplitFilterDeriver"
  * )
  */
 class SplitFilter extends ConfigFilterBase implements ContainerFactoryPluginInterface {
+
+  use DependencySerializationTrait;
 
   /**
    * The Configuration manager to calculate the dependencies.
@@ -141,14 +143,18 @@ class SplitFilter extends ConfigFilterBase implements ContainerFactoryPluginInte
     $data['module'] = array_merge($data['module'], $modules);
     $data['theme'] = array_merge($data['theme'], $themes);
     // Sort the modules.
-    uksort($data['module'], function ($a, $b) use ($data) {
+    $sort_modules = $data['module'];
+    uksort($sort_modules, function ($a, $b) use ($sort_modules) {
       // Sort by module weight, this assumes the schema of core.extensions.
-      if ($data['module'][$a] != $data['module'][$b]) {
-        return $data['module'][$a] > $data['module'][$b] ? 1 : -1;
+      if ($sort_modules[$a] != $sort_modules[$b]) {
+        return $sort_modules[$a] > $sort_modules[$b] ? 1 : -1;
       }
       // Or sort by module name.
       return $a > $b ? 1 : -1;
     });
+
+    $data['module'] = $sort_modules;
+
     return $data;
   }
 
@@ -161,7 +167,9 @@ class SplitFilter extends ConfigFilterBase implements ContainerFactoryPluginInte
     }
 
     if (in_array($name, $this->blacklist)) {
-      $this->secondaryStorage->write($name, $data);
+      if ($data) {
+        $this->secondaryStorage->write($name, $data);
+      }
 
       return NULL;
     }
@@ -170,7 +178,9 @@ class SplitFilter extends ConfigFilterBase implements ContainerFactoryPluginInte
         // The configuration is in the graylist but skip-equal is not set or
         // the source does not have the same data, so write to secondary and
         // return source data or null if it doesn't exist in the source.
-        $this->secondaryStorage->write($name, $data);
+        if ($data) {
+          $this->secondaryStorage->write($name, $data);
+        }
 
         // If the source has it, return that so it doesn't get changed.
         if ($this->source) {

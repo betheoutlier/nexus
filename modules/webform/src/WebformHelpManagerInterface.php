@@ -53,15 +53,7 @@ interface WebformHelpManagerInterface {
   public function buildIndex();
 
   /**
-   * Build the about section.
-   *
-   * @return array
-   *   An render array containing the about section.
-   */
-  public function buildAbout();
-
-  /**
-   * Build the eleents section.
+   * Build the elements section.
    *
    * @param bool $docs
    *   Set to TRUE to build exportable HTML documentation.

@@ -2,13 +2,12 @@
 
 namespace Drupal\webform\Element;
 
-use Drupal\Component\Render\FormattableMarkup;
 use Drupal\Component\Utility\NestedArray;
 use Drupal\Core\Render\Element;
 use Drupal\Core\Render\Element\FormElement;
+use Drupal\Core\Render\Markup;
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\webform\Utility\WebformElementHelper;
-use Drupal\webform\Utility\WebformThemeHelper;
 
 /**
  * Provides a webform element to assist in creation of multiple elements.
@@ -82,7 +81,7 @@ class WebformMultiple extends FormElement {
     }
     else {
       // Get unique key used to store the current number of items.
-      $number_of_items_storage_key = self::getStorageKey($element, 'number_of_items');
+      $number_of_items_storage_key = static::getStorageKey($element, 'number_of_items');
 
       // Store the number of items which is the number of
       // #default_values + number of empty_items.
@@ -105,17 +104,19 @@ class WebformMultiple extends FormElement {
     }
     $table_id = implode('_', $element['#parents']) . '_table';
 
-    // DEBUG: Disable AJAX callback by commenting out the below callback and
+    // DEBUG: Disable Ajax callback by commenting out the below callback and
     // wrapper.
     $ajax_settings = [
       'callback' => [get_called_class(), 'ajaxCallback'],
       'wrapper' => $table_id,
+      'progress' => ['type' => 'none'],
     ];
 
+    // Track element child keys.
     $element['#child_keys'] = Element::children($element['#element']);
 
     // Build (single) element header.
-    $header = self::buildElementHeader($element);
+    $header = static::buildElementHeader($element);
 
     // Build (single) element rows.
     $row_index = 0;
@@ -137,12 +138,12 @@ class WebformMultiple extends FormElement {
       if (!empty($element['#key']) && !isset($default_value[$element['#key']])) {
         $default_value[$element['#key']] = $key;
       }
-      $rows[$row_index] = self::buildElementRow($table_id, $row_index, $element, $default_value, $weight++, $ajax_settings);
+      $rows[$row_index] = static::buildElementRow($table_id, $row_index, $element, $default_value, $weight++, $ajax_settings);
       $row_index++;
     }
 
     while ($row_index < $number_of_items) {
-      $rows[$row_index] = self::buildElementRow($table_id, $row_index, $element, NULL, $weight++, $ajax_settings);
+      $rows[$row_index] = static::buildElementRow($table_id, $row_index, $element, NULL, $weight++, $ajax_settings);
       $row_index++;
     }
 
@@ -199,13 +200,19 @@ class WebformMultiple extends FormElement {
    *   A render array containing inputs for an element's header.
    */
   public static function buildElementHeader(array $element) {
+    $table_id = implode('-', $element['#parents']) . '-table';
+
     if (empty($element['#header'])) {
       return [
         ['data' => '', 'colspan' => 4],
       ];
     }
     elseif (is_array($element['#header'])) {
-      return array_merge([''], $element['#header'], ['', '']);
+      return array_merge(
+        [['class' => ["$table_id--handle", "webform-multiple-table--handle"]]],
+        $element['#header'],
+        [['class' => ["$table_id--weight", "webform-multiple-table--weight"]], ['class' => ["$table_id--handle", "webform-multiple-table--operations"]]]
+      );
     }
     elseif (is_string($element['#header'])) {
       return [
@@ -213,22 +220,36 @@ class WebformMultiple extends FormElement {
       ];
     }
     else {
+
       $header = [];
-      $header['_handle_'] = '';
+      $header['_handle_'] = [
+        'class' => ["$table_id--handle", "webform-multiple-table--handle"],
+      ];
       if ($element['#child_keys']) {
         foreach ($element['#child_keys'] as $child_key) {
-          if (self::isHidden($element['#element'][$child_key])) {
+          if (static::isHidden($element['#element'][$child_key])) {
             continue;
           }
-          $header[$child_key] = (!empty($element['#element'][$child_key]['#title'])) ? $element['#element'][$child_key]['#title'] : '';
+          $header[$child_key] = [
+            'data' => (!empty($element['#element'][$child_key]['#title'])) ? $element['#element'][$child_key]['#title'] : '',
+            'class' => ["$table_id--$child_key", "webform-multiple-table--$child_key"],
+          ];
         }
       }
       else {
-        $header['item'] = (isset($element['#element']['#title'])) ? $element['#element']['#title'] : '';
+        $header['item'] = [
+          'data' => (isset($element['#element']['#title'])) ? $element['#element']['#title'] : '',
+          'class' => ["$table_id--item", "webform-multiple-table--item"],
+        ];
       }
-      $header['weight'] = t('Weight');
+      $header['weight'] = [
+        'data' => t('Weight'),
+        'class' => ["$table_id--weight", "webform-multiple-table--weight"],
+      ];
       if (empty($element['#cardinality'])) {
-        $header['_operations_'] = '';
+        $header['_operations_'] = [
+          'class' => ["$table_id--operations", "webform-multiple-table--operations"],
+        ];
       }
       return $header;
     }
@@ -248,23 +269,14 @@ class WebformMultiple extends FormElement {
    * @param int $weight
    *   The weight.
    * @param array $ajax_settings
-   *   An array containing AJAX callback settings.
+   *   An array containing Ajax callback settings.
    *
    * @return array
    *   A render array containing inputs for an element's value and weight.
    */
   public static function buildElementRow($table_id, $row_index, array $element, $default_value, $weight, array $ajax_settings) {
     if ($element['#child_keys']) {
-      foreach ($element['#child_keys'] as $child_key) {
-        if (isset($default_value[$child_key])) {
-          if ($element['#element'][$child_key]['#type'] == 'value') {
-            $element['#element'][$child_key]['#value'] = $default_value[$child_key];
-          }
-          else {
-            $element['#element'][$child_key]['#default_value'] = $default_value[$child_key];
-          }
-        }
-      }
+      static::setElementRowDefaultValueRecursive($element['#element'], (array) $default_value);
     }
     else {
       $element['#element']['#default_value'] = $default_value;
@@ -275,18 +287,24 @@ class WebformMultiple extends FormElement {
     $row['_handle_'] = [];
 
     if ($element['#child_keys'] && !empty($element['#header'])) {
+      // Set #parents which is used for nested elements.
+      // @see \Drupal\webform\Element\WebformMultiple::setElementRowParentsRecursive
+      $parents = array_merge($element['#parents'], ['items', $row_index]);
+      $handle_parents = array_merge($element['#parents'], ['items', $row_index, '_handle_']);
       foreach ($element['#child_keys'] as $child_key) {
         // Store hidden element in the '_handle_' column.
         // @see \Drupal\webform\Element\WebformMultiple::convertValuesToItems
-        if (self::isHidden($element['#element'][$child_key])) {
+        if (static::isHidden($element['#element'][$child_key])) {
           $row['_handle_'][$child_key] = $element['#element'][$child_key];
           // ISSUE: All elements in _handle_ are losing their value.
           // WORKAROUND: Convert to element to rendered hidden field.
           $row['_handle_'][$child_key]['#type'] = 'hidden';
           unset($row['_handle_'][$child_key]['#access']);
+          static::setElementRowParentsRecursive($row['_handle_'][$child_key], $child_key, $handle_parents);
         }
         else {
           $row[$child_key] = $element['#element'][$child_key];
+          static::setElementRowParentsRecursive($row[$child_key], $child_key, $parents);
         }
       }
     }
@@ -310,6 +328,7 @@ class WebformMultiple extends FormElement {
       $row['_operations_'] = [];
       $row['_operations_']['add'] = [
         '#type' => 'image_button',
+        '#title' => t('Add'),
         '#src' => drupal_get_path('module', 'webform') . '/images/icons/plus.svg',
         '#limit_validation_errors' => [],
         '#submit' => [[get_called_class(), 'addItemSubmit']],
@@ -322,6 +341,7 @@ class WebformMultiple extends FormElement {
       ];
       $row['_operations_']['remove'] = [
         '#type' => 'image_button',
+        '#title' => t('Remove'),
         '#src' => drupal_get_path('module', 'webform') . '/images/icons/ex.svg',
         '#limit_validation_errors' => [],
         '#submit' => [[get_called_class(), 'removeItemSubmit']],
@@ -332,22 +352,6 @@ class WebformMultiple extends FormElement {
         '#row_index' => $row_index,
         '#name' => $table_id . '_remove_' . $row_index,
       ];
-
-      // Bootstrap theme does not support image buttons so we are going to use
-      // Boostrap's icon buttons.
-      // @see themes/bootstrap/templates/input/input--button.html.twig
-      if (WebformThemeHelper::isActiveTheme('bootstrap')) {
-        $row['_operations_']['add'] += [
-          '#title' => t('Add'),
-          '#icon_only' => TRUE,
-          '#icon' => \Drupal\bootstrap\Bootstrap::glyphicon('plus-sign'),
-        ];
-        $row['_operations_']['remove'] += [
-          '#title' => t('Remove'),
-          '#icon_only' => TRUE,
-          '#icon' => \Drupal\bootstrap\Bootstrap::glyphicon('minus-sign'),
-        ];
-      }
     }
 
     $row['#weight'] = $weight;
@@ -376,6 +380,45 @@ class WebformMultiple extends FormElement {
     }
   }
 
+  /**
+   * Set element row default value recusively.
+   *
+   * @param array $element
+   *   The element.
+   * @param array $default_value
+   *   The default values.
+   */
+  protected static function setElementRowDefaultValueRecursive(array &$element, array $default_value) {
+    foreach (Element::children($element) as $child_key) {
+      if (isset($default_value[$child_key])) {
+        if ($element[$child_key]['#type'] == 'value') {
+          $element[$child_key]['#value'] = $default_value[$child_key];
+        }
+        else {
+          $element[$child_key]['#default_value'] = $default_value[$child_key];
+        }
+      }
+      static::setElementRowDefaultValueRecursive($element[$child_key], $default_value);
+    }
+  }
+
+  /**
+   * Set element row parents recursively.
+   *
+   * This allow elements/columns to contain nested sub-elements.
+   *
+   * @param array $element
+   *   The child element.
+   * @param array $parents
+   *   The main element's parents.
+   */
+  protected static function setElementRowParentsRecursive(array &$element, $element_key, array $parents) {
+    $element['#parents'] = array_merge($parents, [$element_key]);
+    foreach (Element::children($element) as $child_key) {
+      static::setElementRowParentsRecursive($element[$child_key], $child_key, $parents);
+    }
+  }
+
   /****************************************************************************/
   // Callbacks.
   /****************************************************************************/
@@ -394,7 +437,7 @@ class WebformMultiple extends FormElement {
     $element =& NestedArray::getValue($form, array_slice($button['#array_parents'], 0, -2));
 
     // Add more items to the number of items.
-    $number_of_items_storage_key = self::getStorageKey($element, 'number_of_items');
+    $number_of_items_storage_key = static::getStorageKey($element, 'number_of_items');
     $number_of_items = $form_state->get($number_of_items_storage_key);
     $more_items = (int) $element['add']['more_items']['#value'];
     $form_state->set($number_of_items_storage_key, $number_of_items + $more_items);
@@ -430,7 +473,7 @@ class WebformMultiple extends FormElement {
     }
 
     // Add one item to the 'number of items'.
-    $number_of_items_storage_key = self::getStorageKey($element, 'number_of_items');
+    $number_of_items_storage_key = static::getStorageKey($element, 'number_of_items');
     $number_of_items = $form_state->get($number_of_items_storage_key);
     $form_state->set($number_of_items_storage_key, $number_of_items + 1);
 
@@ -460,7 +503,7 @@ class WebformMultiple extends FormElement {
     $values = array_values($values);
 
     // Remove one item from the 'number of items'.
-    $number_of_items_storage_key = self::getStorageKey($element, 'number_of_items');
+    $number_of_items_storage_key = static::getStorageKey($element, 'number_of_items');
     $number_of_items = $form_state->get($number_of_items_storage_key);
     // Never allow the number of items to be less than 1.
     if ($number_of_items != 1) {
@@ -476,7 +519,7 @@ class WebformMultiple extends FormElement {
   }
 
   /**
-   * Webform submission AJAX callback the returns the list table.
+   * Webform submission Ajax callback the returns the list table.
    */
   public static function ajaxCallback(array &$form, FormStateInterface $form_state) {
     $button = $form_state->getTriggeringElement();
@@ -496,10 +539,10 @@ class WebformMultiple extends FormElement {
     $values = NestedArray::getValue($form_state->getValues(), $element['#parents']);
     // Convert values to items and validate duplicate keys.
     try {
-      $items = self::convertValuesToItems($element, $values['items']);
+      $items = static::convertValuesToItems($element, $values['items']);
     }
     catch (\Exception $exception) {
-      $form_state->setError($element, new FormattableMarkup($exception->getMessage(), []));
+      $form_state->setError($element, Markup::create($exception->getMessage()));
       return;
     }
 
@@ -558,7 +601,7 @@ class WebformMultiple extends FormElement {
 
     // Now build the associative array of items.
     $items = [];
-    foreach ($values as $index => $value) {
+    foreach ($values as $value) {
       $item = NULL;
       if (isset($value['_item_'])) {
         $item = $value['_item_'];
@@ -575,7 +618,7 @@ class WebformMultiple extends FormElement {
       }
 
       // Never add an empty item.
-      if (self::isEmpty($item)) {
+      if (static::isEmpty($item)) {
         continue;
       }
 
@@ -619,7 +662,7 @@ class WebformMultiple extends FormElement {
     }
     elseif (is_array($value)) {
       return !array_filter($value, function ($item) {
-        return !self::isEmpty($item);
+        return !static::isEmpty($item);
       });
     }
     else {

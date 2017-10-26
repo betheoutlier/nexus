@@ -84,6 +84,9 @@ function advagg_validator_css($, results, filename, settings) {
         var y = CSSLint.verify(data, settings.csslint.rules);
         var z = y.messages;
         $(results).append('<p><h4>' + filename + '</h4><ul>');
+        if (!z.length) {
+          $(results).append('<li>No errors</li>');
+        }
         for (var i = 0, len = z.length; i < len; i++) {
           // Output lint errors.
           var w = z[i].message + ' (line ' + z[i].line + ', col ' + z[i].col + ', rule ' + z[i].rule.id + ')';

@@ -2,18 +2,15 @@
 
 /**
  * @file
- * Handles Advanced Aggregation bundler submodule installation/upgrade tasks.
+ * Handles AdvAgg Bundler installation and upgrade tasks.
  */
 
 /**
- * Implements hook_update_N().
+ * Implements hook_install().
  *
- * Set the bundler logic settings.
+ * Clear some caches.
  */
-function advagg_bundler_update_8201() {
-  \Drupal::service('config.factory')
-    ->getEditable('advagg_bundler.settings')
-    ->set('css_logic', 0)
-    ->set('js_logic', 0)
-    ->save();
+function advagg_bundler_install() {
+  \Drupal::cache('render')->invalidateAll();
+  \Drupal::cache('advagg')->invalidateAll();
 }

@@ -5,6 +5,8 @@
  * Handles Advanced Aggregation mod submodule installation and upgrade tasks.
  */
 
+use Drupal\Core\Cache\Cache;
+
 /**
  * Implements hook_update_N().
  *
@@ -15,4 +17,15 @@ function advagg_mod_update_8201() {
     ->getEditable('advagg_mod.settings')
     ->set('css_defer_admin', FALSE)
     ->save();
+}
+
+/**
+ * Implements hook_install().
+ *
+ * Clear caches.
+ */
+function advagg_mod_install() {
+  Cache::invalidateTags(['library_info']);
+  \Drupal::cache('render')->invalidateAll();
+
 }

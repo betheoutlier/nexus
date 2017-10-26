@@ -14,6 +14,9 @@ advagg_mod.settings:
     css_defer_admin:
       type: boolean
       label: 'Whether to defer loading of CSS on the admin theme.'
+    css_defer_external:
+      type: boolean
+      label: 'Whether to also defer loading of external stylesheets.'
     css_defer_js_code:
       type: integer
       label: 'Default value of the inclusion method for the loadCSS code.'
@@ -44,6 +47,9 @@ advagg_mod.settings:
     js_preprocess:
       type: boolean
       label: 'Default value to turn on preprocessing for all JavaScript files.'
+    js_remove_console_log:
+      type: boolean
+      label: 'Remove console.log() calls from JavaScript files.'
     prefetch:
       type: boolean
       label: 'Default value to use the prefetch tag for certain domains.'

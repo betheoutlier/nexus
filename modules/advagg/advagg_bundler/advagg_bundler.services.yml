@@ -1,5 +1,7 @@
 services:
-  advagg_bundler.overrider:
-    class: Drupal\advagg_bundler\ConfigOverrider
-    tags:
-      - { name: config.factory.override, priority: 100 }
+  asset.js.collection_grouper:
+    class: Drupal\advagg_bundler\Asset\AdvaggJsCollectionGrouper
+    arguments: [ '@config.factory' ]
+  asset.css.collection_grouper:
+    class: Drupal\advagg_bundler\Asset\AdvaggCssCollectionGrouper
+    arguments: [ '@config.factory' ]

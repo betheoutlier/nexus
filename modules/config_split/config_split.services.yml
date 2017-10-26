@@ -3,6 +3,7 @@ services:
     class: Drupal\config_split\ConfigSplitCliService
     arguments:
       - "@plugin.manager.config_filter"
+      - "@config_filter.storage_factory"
       - "@config.manager"
       - "@config.storage"
       - "@config.storage.sync"
@@ -13,15 +14,3 @@ services:
       - "@module_installer"
       - "@theme_handler"
       - "@string_translation"
-  config_split.manager:
-    class: Drupal\config_split\ConfigSplitManager
-  config_split.console_export_command:
-    class: Drupal\config_split\Command\ExportCommand
-    arguments: []
-    tags:
-      - { name: drupal.command }
-  config_split.console_import_command:
-    class: Drupal\config_split\Command\ImportCommand
-    arguments: []
-    tags:
-      - { name: drupal.command }

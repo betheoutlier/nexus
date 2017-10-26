@@ -2,7 +2,7 @@
 
 /**
  * @file
- * Advanced CSS/JS aggregation module.
+ * Advanced CSS/JS aggregation testing module.
  */
 
 /**
@@ -10,4 +10,6 @@
  */
 function advagg_test_page_attachments(array &$page) {
   $page['#attached']['library'][] = 'advagg_test/external';
+  $page['#attached']['library'][] = 'core/jquery.ui';
+  $page['#attached']['library'][] = 'advagg_test/screen';
 }

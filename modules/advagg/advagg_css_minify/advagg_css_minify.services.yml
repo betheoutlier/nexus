@@ -1,4 +1,13 @@
 services:
-  asset.css.optimizer:
-    class: Drupal\advagg_css_minify\Asset\CssOptimizer
-    arguments: [ '@cache.advagg.minify', '@config.factory', '@state.advagg.files', '@module_handler' ]
+  logger.channel.advagg_css_minify:
+    parent: logger.channel_base
+    arguments: ['advagg_css_minify']
+  advagg.css_minifier:
+    class: Drupal\advagg_css_minify\Asset\CssMinifier
+    arguments: [ '@logger.channel.advagg_css_minify',  '@config.factory' ]
+  advagg.css_subscriber:
+    class: Drupal\advagg_css_minify\EventSubscriber\MinificationSubscriber
+    tags:
+      -
+        name: event_subscriber
+    arguments: [ '@advagg.css_minifier' ]

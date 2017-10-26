@@ -19,11 +19,11 @@ class WebformDialogHelper {
   /**
    * Get Off canvas trigger name.
    *
+   * Issue #2862625: Rename offcanvas to two words in code and comments.
+   * https://www.drupal.org/node/2862625
+   *
    * @return string
    *   The off canvas trigger name.
-   *
-   * @see Issue #2862625: Rename offcanvas to two words in code and comments.
-   * @see https://www.drupal.org/node/2862625
    */
   public static function getOffCanvasTriggerName() {
     if (isset(self::$offCanvasTriggerName)) {
@@ -62,8 +62,8 @@ class WebformDialogHelper {
     $build['#attached']['library'][] = 'webform/webform.admin.dialog';
     // @see \Drupal\webform\Element\WebformHtmlEditor::preRenderWebformHtmlEditor
     if (\Drupal::moduleHandler()->moduleExists('imce') && \Drupal\imce\Imce::access()) {
-      $element['#attached']['library'][] = 'imce/drupal.imce.ckeditor';
-      $element['#attached']['drupalSettings']['webform']['html_editor']['ImceImageIcon'] = file_create_url(drupal_get_path('module', 'imce') . '/js/plugins/ckeditor/icons/imceimage.png');
+      $build['#attached']['library'][] = 'imce/drupal.imce.ckeditor';
+      $build['#attached']['drupalSettings']['webform']['html_editor']['ImceImageIcon'] = file_create_url(drupal_get_path('module', 'imce') . '/js/plugins/ckeditor/icons/imceimage.png');
     }
   }
 
@@ -83,7 +83,7 @@ class WebformDialogHelper {
       return $class ? ['class' => $class] : [];
     }
     else {
-      $class[] = 'use-ajax';
+      $class[] = 'webform-ajax-link';
       if (WebformDialogHelper::useOffCanvas()) {
         return [
           'class' => $class,
@@ -102,6 +102,9 @@ class WebformDialogHelper {
           'data-dialog-type' => 'modal',
           'data-dialog-options' => Json::encode([
             'width' => $width,
+            // .webform-modal is used to set the dialog's top position.
+            // @see modules/sandbox/webform/css/webform.ajax.css
+            'dialogClass' => 'webform-modal',
           ]),
         ];
       }

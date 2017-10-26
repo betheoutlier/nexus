@@ -7,6 +7,7 @@ use Drupal\Core\Entity\EntityInterface;
 use Drupal\Core\Entity\EntityStorageInterface;
 use Drupal\Core\Entity\EntityTypeInterface;
 use Drupal\Core\Url;
+use Drupal\webform\Element\WebformHtmlEditor;
 use Drupal\webform\Utility\WebformDialogHelper;
 use Symfony\Component\HttpFoundation\RedirectResponse;
 
@@ -50,6 +51,7 @@ class WebformEntityListBuilder extends ConfigEntityListBuilder {
    */
   public function __construct(EntityTypeInterface $entity_type, EntityStorageInterface $storage) {
     parent::__construct($entity_type, $storage);
+
     $this->keys = \Drupal::request()->query->get('search');
     $this->category = \Drupal::request()->query->get('category');
     $this->state = \Drupal::request()->query->get('state');
@@ -72,20 +74,13 @@ class WebformEntityListBuilder extends ConfigEntityListBuilder {
     // Must manually add local actions to the webform because we can't alter local
     // actions and add the needed dialog attributes.
     // @see https://www.drupal.org/node/2585169
-    if ($this->moduleHandler()->moduleExists('webform_ui')) {
-      $add_form_attributes = WebformDialogHelper::getModalDialogAttributes(700, ['button', 'button-action', 'button--primary', 'button--small']);
-    }
-    else {
-      $add_form_attributes = ['class' => ['button', 'button-action', 'button--primary', 'button--small']];
-    }
-
     if (\Drupal::currentUser()->hasPermission('create webform')) {
       $build['local_actions'] = [
         'add_form' => [
           '#type' => 'link',
           '#title' => $this->t('Add webform'),
           '#url' => new Url('entity.webform.add_form'),
-          '#attributes' => $add_form_attributes,
+          '#attributes' => WebformDialogHelper::getModalDialogAttributes(700, ['button', 'button-action', 'button--primary', 'button--small']),
         ],
       ];
     }
@@ -101,18 +96,16 @@ class WebformEntityListBuilder extends ConfigEntityListBuilder {
 
     // Display info.
     if ($total = $this->getTotal($this->keys, $this->category, $this->state)) {
-      $t_args = [
-        '@total' => $total,
-        '@results' => $this->formatPlural($total, $this->t('webform'), $this->t('webforms')),
-      ];
       $build['info'] = [
-        '#markup' => $this->t('@total @results', $t_args),
+        '#markup' => $this->formatPlural($total, '@total webform', '@total webforms', ['@total' => $total]),
         '#prefix' => '<div>',
         '#suffix' => '</div>',
       ];
     }
 
     $build += parent::render();
+
+    $build['table']['#attributes']['class'][] = 'webform-forms';
 
     // Must preload libraries required by (modal) dialogs.
     WebformDialogHelper::attachLibraries($build);
@@ -172,7 +165,7 @@ class WebformEntityListBuilder extends ConfigEntityListBuilder {
     if ($entity->isTemplate()) {
       $row['title']['data']['template'] = ['#markup' => ' <b>(' . $this->t('Template') . ')</b>'];
     }
-    $row['description']['data']['#markup'] = $entity->get('description');
+    $row['description']['data'] = WebformHtmlEditor::checkMarkup($entity->get('description'));
     $row['category']['data']['#markup'] = $entity->get('category');
     switch ($entity->get('status')) {
       case WebformInterface::STATUS_OPEN:
@@ -192,8 +185,20 @@ class WebformEntityListBuilder extends ConfigEntityListBuilder {
     $row['results_operations']['data'] = [
       '#type' => 'operations',
       '#links' => $this->getDefaultOperations($entity, 'results'),
+      '#prefix' => '<div class="webform-dropbutton">',
+      '#suffix' => '</div>',
     ];
     return $row + parent::buildRow($entity);
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public function buildOperations(EntityInterface $entity) {
+    return parent::buildOperations($entity) + [
+      '#prefix' => '<div class="webform-dropbutton">',
+      '#suffix' => '</div>',
+    ];
   }
 
   /**
@@ -223,24 +228,34 @@ class WebformEntityListBuilder extends ConfigEntityListBuilder {
     }
     else {
       $operations = parent::getDefaultOperations($entity);
+      if (isset($operations['edit'])) {
+        $operations['edit']['title'] = $this->t('Build');
+      }
+      if ($entity->access('update')) {
+        $operations['settings'] = [
+          'title' => $this->t('Settings'),
+          'weight' => 22,
+          'url' => Url::fromRoute('entity.webform.settings', $route_parameters),
+        ];
+      }
       if ($entity->access('view')) {
         $operations['view'] = [
           'title' => $this->t('View'),
-          'weight' => 20,
+          'weight' => 24,
           'url' => Url::fromRoute('entity.webform.canonical', $route_parameters),
         ];
       }
       if ($entity->access('submission_update_any')) {
         $operations['test'] = [
           'title' => $this->t('Test'),
-          'weight' => 21,
+          'weight' => 25,
           'url' => Url::fromRoute('entity.webform.test', $route_parameters),
         ];
       }
       if ($entity->access('duplicate')) {
         $operations['duplicate'] = [
           'title' => $this->t('Duplicate'),
-          'weight' => 23,
+          'weight' => 26,
           'url' => Url::fromRoute('entity.webform.duplicate_form', $route_parameters),
           'attributes' => WebformDialogHelper::getModalDialogAttributes(700),
         ];
@@ -301,6 +316,7 @@ class WebformEntityListBuilder extends ConfigEntityListBuilder {
     // Filter by key(word).
     if ($keys) {
       $or = $query->orConditionGroup()
+        ->condition('id', $this->keys, 'CONTAINS')
         ->condition('title', $this->keys, 'CONTAINS')
         ->condition('description', $this->keys, 'CONTAINS')
         ->condition('category', $this->keys, 'CONTAINS')

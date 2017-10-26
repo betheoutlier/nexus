@@ -1,6 +1,6 @@
 /**
  * @file
- * Javascript behaviors for admin pages.
+ * JavaScript behaviors for admin pages.
  */
 
 (function ($, Drupal) {
@@ -44,6 +44,10 @@
       // which row triggers the event.
       $('.webform-results__table', context).once('webform-results-table').click(function (event) {
         if (event.target.tagName === 'A' || event.target.tagName === 'BUTTON') {
+          return true;
+        }
+
+        if ($(event.target).parents('a[href]').length) {
           return true;
         }
 

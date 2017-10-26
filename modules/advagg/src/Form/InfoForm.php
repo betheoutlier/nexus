@@ -2,14 +2,12 @@
 
 namespace Drupal\advagg\Form;
 
-use Drupal\Component\Utility\Unicode;
 use Drupal\Component\Utility\Xss;
 use Drupal\Core\Config\ConfigFactoryInterface;
+use Drupal\Core\Cache\CacheBackendInterface;
 use Drupal\Core\Datetime\DateFormatterInterface;
 use Drupal\Core\Form\ConfigFormBase;
-use Drupal\Core\Form\FormBuilderInterface;
 use Drupal\Core\Form\FormStateInterface;
-use Drupal\Core\State\StateInterface;
 use Drupal\Core\StringTranslation\Translator\TranslatorInterface;
 use Drupal\Core\Theme\Registry;
 use Symfony\Component\DependencyInjection\ContainerInterface;
@@ -25,21 +23,6 @@ class InfoForm extends ConfigFormBase {
    * @var \Drupal\Core\Theme\Registry
    */
   protected $themeRegistry;
-
-  /**
-   * The AdvAgg file status state information storage service.
-   *
-   * @var \Drupal\Core\State\StateInterface
-   */
-  protected $advaggFiles;
-
-  /**
-   * The AdvAgg aggregates state information storage service.
-   *
-   * @var \Drupal\Core\State\StateInterface
-   */
-  protected $advaggAggregates;
-
   /**
    * The request stack.
    *
@@ -62,32 +45,36 @@ class InfoForm extends ConfigFormBase {
   protected $translation;
 
   /**
+   * The AdvAgg cache.
+   *
+   * @var \Drupal\Core\Cache\CacheBackendInterface
+   */
+  protected $cache;
+
+  /**
    * Constructs a SettingsForm object.
    *
    * @param \Drupal\Core\Config\ConfigFactoryInterface $config_factory
    *   The factory for configuration objects.
    * @param \Drupal\Core\Theme\Registry $theme_registry
    *   The theme registry service.
-   * @param \Drupal\Core\State\StateInterface $advagg_files
-   *   The AdvAgg file status state information storage service.
-   * @param \Drupal\Core\State\StateInterface $advagg_aggregates
-   *   The AdvAgg aggregate state information storage service.
    * @param \Symfony\Component\HttpFoundation\RequestStack $request_stack
    *   The request stack.
    * @param \Drupal\Core\Datetime\DateFormatterInterface $date_formatter
    *   The Date formatter service.
    * @param \Drupal\Core\StringTranslation\Translator\TranslatorInterface $string_translation
    *   The string translation service.
+   * @param \Drupal\Core\Cache\CacheBackendInterface $cache
+   *   The AdvAgg cache.
    */
-  public function __construct(ConfigFactoryInterface $config_factory, Registry $theme_registry, StateInterface $advagg_files, StateInterface $advagg_aggregates, RequestStack $request_stack, DateFormatterInterface $date_formatter, TranslatorInterface $string_translation) {
+  public function __construct(ConfigFactoryInterface $config_factory, Registry $theme_registry, RequestStack $request_stack, DateFormatterInterface $date_formatter, TranslatorInterface $string_translation, CacheBackendInterface $cache) {
     parent::__construct($config_factory);
 
     $this->themeRegistry = $theme_registry;
-    $this->advaggFiles = $advagg_files;
-    $this->advaggAggregates = $advagg_aggregates;
     $this->requestStack = $request_stack;
     $this->dateFormatter = $date_formatter;
     $this->translation = $string_translation;
+    $this->cache = $cache;
   }
 
   /**
@@ -97,11 +84,10 @@ class InfoForm extends ConfigFormBase {
     return new static(
       $container->get('config.factory'),
       $container->get('theme.registry'),
-      $container->get('state.advagg.files'),
-      $container->get('state.advagg.aggregates'),
       $container->get('request_stack'),
       $container->get('date.formatter'),
-      $container->get('string_translation')
+      $container->get('string_translation'),
+      $container->get('cache.advagg')
     );
   }
 
@@ -123,9 +109,8 @@ class InfoForm extends ConfigFormBase {
    * {@inheritdoc}
    */
   public function buildForm(array $form, FormStateInterface $form_state) {
-    $form = [];
     $form['tip'] = [
-      '#markup' => '<p>' . $this->t('This page provides debugging information. There are no configuration options here.') . '</p>',
+      '#markup' => '<p>' . t('This page provides debugging information. There are no configuration options here.') . '</p>',
     ];
 
     // Get all hooks and variables.
@@ -135,75 +120,19 @@ class InfoForm extends ConfigFormBase {
     // Output html preprocess functions hooks.
     $form['theme_info'] = [
       '#type' => 'details',
-      '#title' => $this->t('Hook Theme Info'),
+      '#open' => TRUE,
+      '#title' => t('Hook Theme Info'),
     ];
     $data = implode("\n", $core_hooks['html']['preprocess functions']);
     $form['theme_info']['advagg_theme_info'] = [
       '#markup' => '<p>preprocess functions on html.</p><pre>' . $data . '</pre>',
     ];
 
-    $file_data = $this->advaggFiles->getAll();
-
-    // Get all parent css and js files.
-    $types = ['css', 'js'];
-    foreach ($types as $type) {
-      $form[$type] = [
-        '#type' => 'details',
-        '#title' => $this->t('@type files', ['@type' => Unicode::strtoupper($type)]),
-      ];
-    }
-    foreach ($file_data as $name => $info) {
-      if (!in_array($info['fileext'], $types)) {
-        continue;
-      }
-      $form[$info['fileext']][$info['filename_hash']] = [
-        '#markup' => '<details><summary>' . $this->translation->formatPlural($info['changes'], 'changed 1 time - %file<br />', 'changed %changes times - %file<br />', [
-          '%changes' => $info['changes'],
-          '%file' => $name,
-        ]) . '</summary><div class="details-wrapper"><pre>' . print_r($info, TRUE) . '</pre></div></details>',
-      ];
-    }
-
-    // Display as module -> hook instead of hook -> module.
-    ksort($advagg_hooks);
-    $module_hooks = [];
-    foreach ($advagg_hooks as $hook => $values) {
-      if (!empty($values)) {
-        foreach ($values as $module_name) {
-          if (!isset($module_hooks[$module_name])) {
-            $module_hooks[$module_name] = [];
-          }
-          $module_hooks[$module_name][] = $hook;
-        }
-      }
-      else {
-        $module_hooks['not in use'][] = $hook;
-      }
-    }
-    ksort($module_hooks);
-
-    $form['modules_implementing_advagg'] = [
-      '#type' => 'details',
-      '#title' => $this->t('Modules implementing aggregate hooks'),
-    ];
     $form['hooks_implemented'] = [
       '#type' => 'details',
-      '#title' => $this->t('AdvAgg CSS/JS hooks implemented by modules'),
+      '#open' => TRUE,
+      '#title' => t('Core asset hooks implemented by modules'),
     ];
-
-    // Output all advagg hooks implemented.
-    foreach ($module_hooks as $hook => $values) {
-      if (empty($values)) {
-        $form['modules_implementing_advagg'][$hook] = [
-          '#markup' => '<div><strong>' . $hook . ':</strong> 0</div>',
-        ];
-      }
-      else {
-        $form['modules_implementing_advagg'][$hook] = [
-          '#markup' => '<div><strong>' . $hook . ':</strong> ' . count($values) . $this->formatList($values) . '</div>',
-        ];
-      }
-    }
 
     // Output all advagg hooks implemented.
     foreach ($advagg_hooks as $hook => $values) {
@@ -219,34 +148,22 @@ class InfoForm extends ConfigFormBase {
       }
     }
 
-    // Output what is used inside of advagg_get_current_hooks_hash().
-    $form['hooks_variables_hash'] = [
-      '#type' => 'details',
-      '#title' => $this->t('Hooks And Variables Used In Hash'),
-    ];
-    $form['hooks_variables_hash']['description'] = [
-      '#markup' => $this->t('Current Value: %value. Below is the listing of variables and hooks used to generate the 3rd hash of an aggregates filename.', ['%value' => advagg_get_current_hooks_hash()]),
-    ];
-    $form['hooks_variables_hash']['output'] = [
-      // @ignore production_php
-      '#markup' => '<pre>' . print_r(advagg_current_hooks_hash_array(), TRUE) . '</pre>',
-    ];
     // Get info about a file.
     $form['get_info_about_agg'] = [
       '#type' => 'details',
       '#open' => TRUE,
-      '#title' => $this->t('Get detailed info about an aggregate file'),
+      '#title' => t('Get detailed info about an optimized file'),
     ];
     $form['get_info_about_agg']['filename'] = [
       '#type' => 'textfield',
       '#size' => 170,
       '#maxlength' => 256,
       '#default_value' => '',
-      '#title' => $this->t('Filename'),
+      '#title' => t('Filename'),
     ];
     $form['get_info_about_agg']['submit'] = [
       '#type' => 'submit',
-      '#value' => $this->t('Lookup Details'),
+      '#value' => t('Lookup Details'),
       '#submit' => ['::getFileInfoSubmit'],
       '#validate' => ['::getFileInfoValidate'],
       '#ajax' => [
@@ -255,12 +172,13 @@ class InfoForm extends ConfigFormBase {
         'effect' => 'fade',
       ],
     ];
-    $form['get_info_about_agg']['tip'] = [
-      '#markup' => '<p>' . $this->t('Takes input like "@css_file" or a full aggregate name like "@advagg_js"', [
-        '@css_file' => $this->advaggFiles->getRandomKey(),
-        '@advagg_js' => $this->advaggAggregates->getRandom()['uid'],
-      ]) . '</p>',
-    ];
+    if ($tip = $this->getRandomFile()) {
+      $form['get_info_about_agg']['tip'] = [
+        '#markup' => '<p>' . t('Input an optimized filename like "@css_file".', [
+          '@css_file' => $tip,
+        ]) . '</p>',
+      ];
+    }
     $form['get_info_about_agg']['wrapper'] = [
       '#prefix' => "<div id='advagg-file-info-ajax'>",
       '#suffix' => "</div>",
@@ -296,11 +214,7 @@ class InfoForm extends ConfigFormBase {
    *   The current state of the form.
    */
   public function getFileInfoSubmit(array &$form, FormStateInterface $form_state) {
-    $info = $this->getFileInfo($form_state->getValue('filename'));
-    $output = '<pre>' . print_r($info, TRUE) . '</pre>';
-    if (!$this->isAjax()) {
-      drupal_set_message($output);
-    }
+    drupal_set_message($this->getFileInfo($form_state->getValue('filename')));
   }
 
   /**
@@ -308,23 +222,12 @@ class InfoForm extends ConfigFormBase {
    *
    * @param array $form
    *   An associative array containing the structure of the form.
-   * @param \Drupal\Core\Form\FormStateInterface $form_state
-   *   The current state of the form.
+   *
+   * @return array
+   *   The file info element.
    */
-  public function getFileInfoAjax(array &$form, FormStateInterface $form_state) {
-    $element = $form['get_info_about_agg']['wrapper'];
-    if ($form_state->hasAnyErrors()) {
-      return $element;
-    }
-    $info = $this->getFileInfo($form_state->getValue('filename'));
-    if (empty($info)) {
-      $form_state->setErrorByName('filename', $this->t('Please input a valid aggregate filename.'));
-      return $element;
-    }
-    else {
-      $element['#markup'] = '<pre>' . print_r($info, TRUE) . '</pre>';
-      return $element;
-    }
+  public function getFileInfoAjax(array &$form) {
+    return $form['get_info_about_agg']['wrapper'];
   }
 
   /**
@@ -335,9 +238,9 @@ class InfoForm extends ConfigFormBase {
    * @param \Drupal\Core\Form\FormStateInterface $form_state
    *   The current state of the form.
    */
-  public function getFileInfoValidate(array &$form, FormStateInterface $form_state) {
+  public function getFileInfoValidate(array $form, FormStateInterface $form_state) {
     if (empty($form_state->getValue('filename'))) {
-      $form_state->setErrorByName('filename', $this->t('Please input an aggregate filename.'));
+      $form_state->setErrorByName('filename', t('Please input a valid optimized filename.'));
     }
   }
 
@@ -347,41 +250,40 @@ class InfoForm extends ConfigFormBase {
    * @param string $filename
    *   Name of file to lookup.
    *
-   * @return array
-   *   Returns an array of detailed info about this file.
+   * @return string
+   *   Detailed info about this file.
    */
   private function getFileInfo($filename) {
-    // Strip quotes and trim.
-    $filename = trim(str_replace(['"', "'"], '', $filename));
-    if (substr_compare($filename, 'css_', 0) > 0 || substr_compare($filename, 'js_', 0) > 0) {
-      $results = array_column($this->advaggAggregates->getAll(), NULL, 'uid');
-      if (isset($results[$filename])) {
-        return $results[$filename];
-      }
-      else {
-        return "Aggregate name unrecognized, confirm spelling, otherwise likely a very old aggregate that has been expunged.";
+    if (substr_compare($filename, 'css_', 0) || substr_compare($filename, 'js_', 0)) {
+      $cid = str_replace(['css_', 'js_', '.css', '.js'], '', $filename);
+      $cid = substr($cid, 0, strpos($cid, '.'));
+      if ($cached = $this->cache->get($cid, TRUE)) {
+        return print_r($cached->data, TRUE);
       }
     }
-    elseif ($data = $this->advaggFiles->get($filename)) {
-      $data['File modification date'] = $this->dateFormatter->format($data['mtime'], 'html_datetime');
-      $data['Information last update'] = $this->dateFormatter->format($data['updated'], 'html_datetime');
-      return $data;
-    }
-    else {
-      return "File not found and AdvAgg has no record of it. Confirm spelling of the path.";
-    }
+    return t('Optimized file information not found, confirm spelling of the path. Alternatively, that could be an outdated file.');
   }
 
   /**
-   * Checks if the form was submitted by AJAX.
+   * Get a (pseudo) random optimized file name.
    *
-   * @return bool
-   *   TRUE if the form was submitted via AJAX, otherwise FALSE.
+   * @return bool|string
+   *   The filename or FALSE if no valid files found.
    */
-  private function isAjax() {
-    $request = $this->requestStack->getCurrentRequest();
-    if ($request->query->has(FormBuilderInterface::AJAX_FORM_REQUEST)) {
-      return TRUE;
+  private function getRandomFile() {
+    // Ensure the directory exists.
+    $dir = 'public://js/optimized/';
+    if (!is_dir($dir)) {
+      return FALSE;
+    }
+    if ($handler = opendir($dir)) {
+      while (($file = readdir($handler)) !== FALSE) {
+        if (is_file($dir . $file) && pathinfo($file, PATHINFO_EXTENSION) == 'js') {
+          closedir($handler);
+          return $file;
+        }
+      }
+      closedir($handler);
     }
     return FALSE;
   }

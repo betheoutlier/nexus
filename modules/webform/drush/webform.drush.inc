@@ -5,6 +5,8 @@
  * Webform module drush commands.
  */
 
+use Drupal\Component\Serialization\Json;
+use Drupal\Core\Cache\Cache;
 use Drupal\Core\Serialization\Yaml;
 use Drupal\webform\Controller\WebformResultsExportController;
 use Drupal\webform\Entity\Webform;
@@ -38,8 +40,9 @@ function webform_drush_command() {
       // Tabular export options.
       'header-keys' => 'Set to "label" (default) or "key"',
       'options-item-format' => 'Set to "label" (default) or "key". Set to "key" to print select list values by their keys instead of labels.',
-      'options-format' => 'Set to "separate" (default) or "compact" to determine how select list values are exported.',
-      'entity-reference-format' => 'Set to "link" (default) or "id" to determine how entity references are exported.',
+      'options-single-format' => 'Set to "separate" (default) or "compact" to determine how single select list values are exported.',
+      'options-multiple-format' => 'Set to "separate" (default) or "compact" to determine how multiple select list values are exported.',
+      'entity-reference-items' => 'Comma-separated list of entity reference items (id, title, and/or url) to be exported.',
       'excluded-columns' => 'Comma-separated list of component IDs or webform keys to exclude.',
       // Download options.
       'entity-type' => 'The entity type to which this submission was submitted from.',
@@ -85,9 +88,10 @@ function webform_drush_command() {
     'bootstrap' => DRUSH_BOOTSTRAP_DRUPAL_ROOT,
     'options' => [
       'dependencies' => 'Add module dependencies to installed webform and options configuration entities.',
+      'prefix' => 'Prefix for file names to be tidied. (Defaults to webform)'
     ],
     'arguments' => [
-      'module' => "The module that needs its YAML configuration files (config/install) tidied. (Defaults to webform)",
+      'module' => "The module (config/install) or config directory (sync) that needs its YAML configuration files tidied. (Defaults to webform)",
     ],
     'examples' => [
       'drush webform-tidy webform' => "Tidies YAML configuration files in 'webform/config' for the Webform module",
@@ -192,6 +196,18 @@ function webform_drush_command() {
     'aliases' => ['wfd'],
   ];
 
+  /* Composer */
+
+  $items['webform-composer-update'] = [
+    'description' => "Updates the Drupal installation's composer.json to include the Webform module's selected libraries as repositories.",
+    'core' => ['8+'],
+    'bootstrap' => DRUSH_BOOTSTRAP_DRUPAL_ROOT,
+    'examples' => [
+      'webform-composer-update' => "Updates the Drupal installation's composer.json to include the Webform module's selected libraries as repositories.",
+    ],
+    'aliases' => ['wfcu'],
+  ];
+
   return $items;
 }
 
@@ -215,6 +231,9 @@ function webform_drush_help($section) {
     case 'drush:webform-libraries-remove':
       return dt('This command removes all downloaded third party libraries required by the Webform module.');
 
+    case 'drush:webform-libraries-composer-update':
+      return dt("Adds the Webform module's libraries as repositories to Drupal's composer.json.");
+
     case 'drush:webform-repair':
       return dt('Makes sure all Webform admin settings and webforms are up-to-date. Only use this command if you are having problems with your existing Webform configuration.');
 
@@ -226,6 +245,9 @@ function webform_drush_help($section) {
 
     case 'drush:webform-generate':
       return dt('This command will create submissions in specified webform.');
+
+    case 'drush:webform-composer-update':
+      return dt("Updates the Drupal installation's composer.json to include the Webform module's selected libraries as repositories.");
 
     case 'meta:webform:title':
       return dt('Webform commands');
@@ -270,10 +292,14 @@ function drush_webform_export($webform_id = NULL) {
   $submission_exporter->setSourceEntity($source_entity);
 
   // Get command options as export options.
+  $default_options = $submission_exporter->getDefaultExportOptions();
   $export_options = drush_redispatch_get_options();
   // Convert dashes to underscores.
   foreach ($export_options as $key => $value) {
     unset($export_options[$key]);
+    if (isset($default_options[$key]) && is_array($default_options[$key])) {
+      $value = explode(',', $value);
+    }
     $export_options[str_replace('-', '_', $key)] = $value;
   }
   $export_options += $submission_exporter->getDefaultExportOptions();
@@ -303,7 +329,7 @@ function drush_webform_export($webform_id = NULL) {
  * Implements drush_hook_COMMAND_validate().
  */
 function drush_webform_purge_validate($webform_id = NULL) {
-  // If webform id is set to 'all' or  not included skip validation.
+  // If webform id is set to 'all' or not included skip validation.
   if (drush_get_option('all') || $webform_id == NULL) {
     return;
   }
@@ -345,15 +371,17 @@ function drush_webform_purge($webform_id = NULL) {
   if (!$webform) {
     $submission_total = \Drupal::entityQuery('webform_submission')->count()->execute();
     $form_total = \Drupal::entityQuery('webform')->count()->execute();
+
     $t_args = [
       '@submission_total' => $submission_total,
-      '@submissions' => \Drupal::translation()->formatPlural($submission_total, t('submission'), t('submissions')),
+      '@submissions' => \Drupal::translation()->formatPlural($submission_total, 'submission', 'submissions'),
       '@form_total' => $form_total,
-      '@forms' => \Drupal::translation()->formatPlural($form_total, t('webform'), t('webforms')),
+      '@forms' => \Drupal::translation()->formatPlural($form_total, 'webform', 'webforms'),
     ];
     if (!drush_confirm(dt('Are you sure you want to delete @submission_total @submissions in @form_total @forms?', $t_args))) {
       return drush_user_abort();
     }
+
     $form = new WebformResultsClearForm($submission_storage, $request_handler);
     $form->batchSet();
     drush_backend_batch_process();
@@ -370,6 +398,7 @@ function drush_webform_purge($webform_id = NULL) {
     if (!drush_confirm(dt("Are you sure you want to delete all submissions from '@title' webform?", $t_args))) {
       return drush_user_abort();
     }
+
     $form = new WebformSubmissionsPurgeForm($submission_storage, $request_handler);
     $form->batchSet($webform, $source_entity);
     drush_backend_batch_process();
@@ -384,12 +413,13 @@ function drush_webform_purge($webform_id = NULL) {
  * Implements drush_hook_COMMAND_validate().
  */
 function drush_webform_tidy_validate($module = 'webform') {
-  if (!file_exists(drupal_get_path('module', $module) . '/config')) {
+  global $config_directories;
+  if (!isset($config_directories[$module]) && !file_exists(drupal_get_path('module', $module) . '/config')) {
     $t_args = [
       '@module' => $module,
       '@directory' => drupal_get_path('module', $module) . '/config',
     ];
-    return drush_set_error(dt("@module does not contain a '@module/config' directory (@directory).", $t_args));
+    return drush_set_error(dt("@module does not contain a '@module/config' directory (@directory) or config directory does not exist.", $t_args));
   }
 }
 
@@ -397,10 +427,20 @@ function drush_webform_tidy_validate($module = 'webform') {
  * Implements drush_hook_COMMAND().
  */
 function drush_webform_tidy($module = 'webform') {
-  $dependencies = drush_get_option('dependencies');
-  $file_directory_path = drupal_get_path('module', $module) . '/config';
-  $files = file_scan_directory($file_directory_path, '/.*\.yml$/');
-  drush_print(dt('Reviewing @count YAML configuration files for the @module.module.', ['@count' => count($files), '@module' => $module]));
+  global $config_directories;
+  $prefix = drush_get_option('prefix', 'webform');
+
+  if (isset($config_directories[$module])) {
+    $file_directory_path = DRUPAL_ROOT . '/' . $config_directories[$module];
+    $dependencies = drush_get_option('dependencies');
+  }
+  else {
+    $file_directory_path = drupal_get_path('module', $module) . '/config';
+    $dependencies = FALSE;
+  }
+  $files = file_scan_directory($file_directory_path, ($prefix) ? '/^' . preg_quote($prefix, '/.') . '.*\.yml$/' : '/.*\.yml$/');
+  drush_print(dt("Reviewing @count YAML configuration '@prefix.*' files in '@module'.", ['@count' => count($files), '@module' => $module, '@prefix' => $prefix]));
+
   $total = 0;
   foreach ($files as $file) {
     $original_yaml = file_get_contents($file->uri);
@@ -483,31 +523,16 @@ function drush_webform_libraries_status() {
  * Implements drush_hook_COMMAND().
  */
 function drush_webform_libraries_make() {
-  /** @var \Drupal\webform\WebformLibrariesManagerInterface $libraries_manager */
-  $libraries_manager = \Drupal::service('webform.libraries_manager');
-  $libraries = $libraries_manager->getLibraries(TRUE);
-
-  $data = [
-    'core' => '8.x',
-    'api' => 2,
-    'libraries' => [],
-  ];
-  foreach ($libraries as $library_name => $library) {
-    $url = $library['download_url']->toString();
-    $data['libraries'][$library_name] = [
-      'directory_name' => $library_name,
-      'destination' => 'libraries',
-      'download' => [
-        'type' => 'get',
-        'url' => $url,
-      ],
-    ];
-  }
-
   drush_print('# This file was generated using the `drush webform-libraries-make` command');
   drush_print(_drush_webform_libraries_make());
 }
 
+/**
+ * Generate drush make as YAML.
+ *
+ * @return string
+ *   Drush make as YAML
+ */
 function _drush_webform_libraries_make() {
   /** @var \Drupal\webform\WebformLibrariesManagerInterface $libraries_manager */
   $libraries_manager = \Drupal::service('webform.libraries_manager');
@@ -587,7 +612,7 @@ function drush_webform_libraries_composer() {
           'type' => $dist_type,
         ],
         'require' => [
-          'composer/installers' =>  '~1.0'
+          'composer/installers' => '~1.0',
         ],
       ],
     ];
@@ -597,12 +622,9 @@ function drush_webform_libraries_composer() {
   ksort($repositories);
   ksort($require);
   $data['repositories'] = $repositories;
-  $data['require'] = $require;
-
   // Drupal.org test bot is throwing...
   // Your requirements could not be resolved to an installable set of packages.
-  // @todo Try to be require all libraries so that they can be installed via composer.
-  // $data['require'];
+  $data['require'] = $require;
 
   drush_print(json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
 }
@@ -680,7 +702,7 @@ function drush_webform_repair() {
   module_load_include('install', 'webform');
 
   drush_print('Repairing admin settings...');
-  _webform_update_admin_settings();
+  _webform_update_admin_settings(TRUE);
 
   drush_print('Repairing webform settings...');
   _webform_update_webform_settings();
@@ -689,11 +711,12 @@ function drush_webform_repair() {
   _webform_update_field_storage_definitions();
 
   drush_print('Repairing webform submission storage schema...');
-   _webform_update_webform_submission_storage_schema();
+  _webform_update_webform_submission_storage_schema();
 
   // Copied from: outside_in_install().
   drush_print('Repairing quick links...');
   // @todo Remove in https://www.drupal.org/node/2783791.
+
   Cache::invalidateTags(['rendered']);
   // @todo Remove when that is fixed in https://www.drupal.org/node/2773591.
   \Drupal::service('cache.discovery')->deleteAll();
@@ -804,6 +827,131 @@ function _drush_webform_docs_tidy($html) {
   $html .= '<hr />' . PHP_EOL . '<p><em>This documentation was generated by the Webform module and <b>MUST</b> be updated using the `drush webform-docs` command.</em></p>';
 
   return $html;
+}
+
+/******************************************************************************/
+// Helper functions.
+/******************************************************************************/
+
+/**
+ * Implements drush_hook_COMMAND_value().
+ */
+function drush_webform_composer_update_validate() {
+  $msg = dt('THIS IS AN EXPERIMENTAL DRUSH COMMAND.') . PHP_EOL .
+    dt('PLEASE MAKE SURE TO BACKUP YOUR COMPOSER.JSON FILE.') . PHP_EOL .
+    dt("Are you sure you want update your Drupal installation's composer.json file?");
+  if (!drush_confirm($msg)) {
+    return drush_user_abort();
+  }
+
+  $drupal_root = drush_get_context('DRUSH_DRUPAL_ROOT');
+  if (file_exists($drupal_root . '/composer.json')) {
+    $composer_json = $drupal_root . '/composer.json';
+    $composer_directory = '';
+  }
+  elseif (file_exists(dirname($drupal_root) . '/composer.json')) {
+    // The "Composer template for Drupal projects" install Drupal in /web'.
+    // @see https://github.com/drupal-composer/drupal-project/blob/8.x/composer.json
+    $composer_json = dirname($drupal_root) . '/composer.json';
+    $composer_directory = basename($drupal_root) . '/';
+  }
+  else {
+    return drush_set_error(dt('Unable to locate composer.json'));
+  }
+
+  drush_set_option('composer_json', $composer_json);
+  drush_set_option('composer_directory', $composer_directory);
+}
+
+/**
+ * Implements drush_hook_COMMAND().
+ */
+function drush_webform_composer_update() {
+  $composer_json = drush_get_option('composer_json');
+  $composer_directory = drush_get_option('composer_directory');
+
+  $json = file_get_contents($composer_json);
+  $data = Json::decode($json) + [
+    'repositories' => [],
+    'require' => [],
+  ];
+
+  // Add drupal-library to installer paths.
+  if (strpos($json, 'type:drupal-library') === FALSE) {
+    $data['extra']['installer-paths'][$composer_directory . 'libraries/{$name}'][] = 'type:drupal-library';
+  }
+
+  // Get repositories and require.
+  $repositories = &$data['repositories'];
+  $require = &$data['require'];
+
+  // Remove all existing _webform repositories.
+  foreach ($repositories as $repository_name => $repository) {
+    if (!empty($repository['_webform'])) {
+      $package_name = $repositories[$repository_name]['package']['name'];
+      unset($repositories[$repository_name], $require[$package_name]);
+    }
+  }
+
+  /** @var \Drupal\webform\WebformLibrariesManagerInterface $libraries_manager */
+  $libraries_manager = \Drupal::service('webform.libraries_manager');
+  $libraries = $libraries_manager->getLibraries(TRUE);
+  // Track if recommended secure_http: true can be used/
+  // @see Issue #2885338: Composer: CKeditor plugins are downloadable with http.
+  $secure_http = TRUE;
+  foreach ($libraries as $library_name => $library) {
+    // Never overwrite existing repositories.
+    if (isset($repositories[$library_name])) {
+      continue;
+    }
+
+    $dist_url = $library['download_url']->toString();
+    $dist_type = (preg_match('/\.zip$/', $dist_url)) ? 'zip' : 'file';
+    $package_version = $library['version'];
+    $package_name = (strpos($library_name, '.') === FALSE) ? "$library_name/$library_name" : str_replace('.', '/', $library_name);
+    if (strpos($dist_url, 'http://') === 0) {
+      $secure_http = FALSE;
+    }
+    $repositories[$library_name] = [
+      '_webform' => TRUE,
+      'type' => 'package',
+      'package' => [
+        'name' => $package_name,
+        'version' => $package_version ,
+        'type' => 'drupal-library',
+        'extra' => [
+          'installer-name' => $library_name,
+        ],
+        'dist' => [
+          'url' => $dist_url,
+          'type' => $dist_type,
+        ],
+        'require' => [
+          'composer/installers' => '~1.0',
+        ],
+      ],
+    ];
+
+    $require[$package_name] = $package_version;
+  }
+  ksort($repositories);
+  ksort($require);
+
+  if ($secure_http) {
+    unset($data['config']['secure-http']);
+  }
+  else {
+    drush_print('Secure HTTP had to be disabled to support CKEditor add-ons.');
+    drush_print('@see http://dgo.to/2885338');
+    drush_print('@see https://getcomposer.org/doc/06-config.md#secure-http');
+    $data['config']['secure-http'] = FALSE;
+  }
+
+  $json_options = JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT | JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES;
+  file_put_contents($composer_json, json_encode($data, $json_options));
+
+  drush_print("$composer_json updated.");
+  drush_print('Make sure to run `composer update`.');
 }
 
 /******************************************************************************/

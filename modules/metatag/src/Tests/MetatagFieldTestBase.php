@@ -133,7 +133,26 @@ abstract class MetatagFieldTestBase extends WebTestBase {
     // create a user with these permissions.
     $all_perms = array_merge($this->base_perms, $this->entity_perms);
     $this->adminUser = $this->drupalCreateUser($all_perms);
+    $this->drupalGet('/user/login');
+    $this->assertResponse(200);
     $this->drupalLogin($this->adminUser);
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  protected function verbose($message, $title = NULL) {
+    // Handle arrays, objects, etc.
+    if (!is_string($message)) {
+      $message = "<pre>\n" . print_r($message, TRUE) . "\n</pre>\n";
+    }
+
+    // Optional title to go before the output.
+    if (!empty($title)) {
+      $title = '<h2>' . Html::escape($title) . "</h2>\n";
+    }
+
+    parent::verbose($title . $message);
   }
 
   /**
@@ -314,9 +333,9 @@ abstract class MetatagFieldTestBase extends WebTestBase {
 
     // Create a new entity object.
     $this->drupalPostForm(NULL, $edit, t($this->entity_save_button_label));
-    $entities = entity_load_multiple_by_properties($this->entity_type, [
-      $this->entity_title_field => $title,
-    ]);
+    $entities = \Drupal::entityTypeManager()
+      ->getStorage($this->entity_type)
+      ->loadByProperties([$this->entity_title_field => $title]);
     $this->assertEqual(1, count($entities), 'Entity was saved');
     $entity = reset($entities);
 
@@ -396,9 +415,9 @@ abstract class MetatagFieldTestBase extends WebTestBase {
 
     // Create a new entity object.
     $this->drupalPostForm(NULL, $edit, t($this->entity_save_button_label));
-    $entities = entity_load_multiple_by_properties($this->entity_type, [
-      $this->entity_title_field => $title,
-    ]);
+    $entities = \Drupal::entityTypeManager()
+      ->getStorage($this->entity_type)
+      ->loadByProperties([$this->entity_title_field => $title]);
     $this->assertEqual(1, count($entities), 'Entity was saved');
     $entity = reset($entities);
 
@@ -436,9 +455,9 @@ abstract class MetatagFieldTestBase extends WebTestBase {
       'field_metatag[0][basic][metatag_test]' => 'Kilimanjaro',
     ];
     $this->drupalPostForm(NULL, $edit, t('Save'));
-    $entities = entity_load_multiple_by_properties('entity_test', [
-      $this->entity_title_field => 'Barfoo',
-    ]);
+    $entities = \Drupal::entityTypeManager()
+      ->getStorage('entity_test')
+      ->loadByProperties([$this->entity_title_field => 'Barfoo']);
     $this->assertEqual(1, count($entities), 'Entity was saved');
     $entity = reset($entities);
 
