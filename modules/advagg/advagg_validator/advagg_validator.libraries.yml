@@ -6,7 +6,7 @@ csslint:
     url: https://github.com/CSSLint/csslint/blob/master/LICENSE
     gpl-compatible: true
   js:
-    //cdn.rawgit.com/stubbornella/csslint/master/release/csslint.js: { type: external }
+    //cdn.rawgit.com/csslint/csslint/master/dist/csslint.js: { type: external }
     js/csslint_form.js: {}
   dependencies:
     - core/drupal.form

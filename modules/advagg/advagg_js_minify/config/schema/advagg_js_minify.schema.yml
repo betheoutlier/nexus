@@ -5,18 +5,6 @@ advagg_js_minify.settings:
     add_license:
       type: boolean
       label: 'Add licensing information to aggregates for individual source files.'
-    file_settings:
-      type: sequence
-      label: 'Per file minification settings.'
-      sequence:
-        type: mapping
-        mapping:
-          path:
-            type: string
-            label: 'File path to asset.'
-          minifier:
-            type: integer
-            label: 'Which minifier to use for this file. 0 is disabled.'
     minifier:
       type: integer
       label: 'Minifier to use. 0 is disabled.'

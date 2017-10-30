@@ -5,31 +5,45 @@
  * Drush commands for Advanced CSS/JS Aggregation.
  */
 
+use Drupal\Core\Cache\Cache;
+
 /**
- * Implements hook_drush_cache_clear().
+ * @defgroup advagg_drush Advanced Aggregates Drush Integration
+ *
+ * @{
+ * Drush command integration for Advanced Aggregates.
+ *
+ * These are basically wrappers around the functions that can be called on the
+ * Operations page.
+ *
+ * @see http://www.drush.org/en/master/
  */
-function advagg_drush_cache_clear(&$types) {
-  // Add in Advanced CSS/JS Aggregation.
-  $types['advagg'] = 'drush_advagg_smart_cache_flush';
-}
 
 /**
  * Implements hook_drush_help().
  */
 function advagg_drush_help($command) {
   switch ($command) {
+    case 'drush:advagg-da':
+      return dt('Keep all Advagg settings but disable all functionality.');
+
+    case 'drush:advagg-en':
+      return dt('Restore all Advagg functionality if disabled.');
+
     case 'drush:advagg-cron':
       return dt('Run the advagg cron hook. This will clear out all stale advagg aggregated files, remove aggregates that include missing files, and remove unused aggregates.');
-
-    case 'drush:advagg-clear-db-cache':
-      return dt('Remove all entries from the advagg cache bins. Useful if you suspect a cache is not getting cleared.');
 
     case 'drush:advagg-clear-all-files':
       return dt('Remove all generated files. Useful if you think some of the generated files got corrupted and thus need to be deleted.');
 
     case 'drush:advagg-force-new-aggregates':
-      return dt('Force the creation of all new aggregates by incrementing a global counter. Current value of counter: %value. This is useful if a CDN has cached an aggregate incorrectly as it will force new ones to be used even if nothing else has changed.', ['%value' => advagg_get_global_counter()]);
+      /** @var \Drupal\Core\Config\Config $config */
+      $config = \Drupal::service('config.factory')->get('advagg.settings');
+      return dt('Force the creation of all new optimized files by incrementing a global counter. Current value of counter: %value. This is may be useful if a CDN has cached an something incorrectly as it will force new ones to be used even if nothing else has changed.', [
+        '%value' => $config->get('global_counter'),
+      ]);
   }
+  return FALSE;
 }
 
 /**
@@ -44,12 +58,19 @@ function advagg_drush_command() {
     ],
     'aliases' => ['advagg-c'],
   ];
-  $items['advagg-clear-db-cache'] = [
-    'description' => dt('Remove all entries from the advagg cache bins.'),
+  $items['advagg-disable'] = [
+    'description' => dt('Disable Advagg.'),
     'examples' => [
-      'Standard example' => 'drush advagg-clear-db-cache',
+      'Standard example' => 'drush advagg-disable',
     ],
-    'aliases' => ['advagg-cdc'],
+    'aliases' => ['advagg-da'],
+  ];
+  $items['advagg-enable'] = [
+    'description' => dt('Enable Advagg.'),
+    'examples' => [
+      'Standard example' => 'drush advagg-enable',
+    ],
+    'aliases' => ['advagg-en'],
   ];
   $items['advagg-clear-all-files'] = [
     'description' => dt('Remove all generated files.'),
@@ -59,7 +80,7 @@ function advagg_drush_command() {
     'aliases' => ['advagg-caf'],
   ];
   $items['advagg-force-new-aggregates'] = [
-    'description' => dt('Force the creation of all new aggregates by incrementing a global counter.'),
+    'description' => dt('Force the creation of all new files by incrementing a global counter.'),
     'examples' => [
       'Standard example' => 'drush advagg-force-new-aggregates',
     ],
@@ -69,73 +90,72 @@ function advagg_drush_command() {
 }
 
 /**
+ * Callback function for drush advagg-disable.
+ */
+function drush_advagg_disable() {
+  /** @var \Drupal\Core\Config\Config $config */
+  $config = \Drupal::service('config.factory')->getEditable('advagg.settings');
+  $config->set('enabled', 0)->save();
+  drush_log(dt('All Advagg functionality is disabled.'), 'ok');
+}
+
+/**
+ * Callback function for drush advagg-enable.
+ */
+function drush_advagg_enable() {
+  /** @var \Drupal\Core\Config\Config $config */
+  $config = \Drupal::service('config.factory')->getEditable('advagg.settings');
+  $config->set('enabled', 1)->save();
+  drush_log(dt('All Advagg functionality is enabled.'), 'ok');
+}
+
+/**
  * Callback function for drush advagg-force-new-aggregates.
- *
- * Callback is called by using drush_hook_command() where
- * hook is the name of the module (advagg) and command is the name of
- * the Drush command with all "-" characters converted to "_" characters.
  */
 function drush_advagg_force_new_aggregates() {
   // Clear out the cache.
-  drush_advagg_clear_db_cache();
+  drush_advagg_clear_all_files();
 
   // Increment counter.
+  /** @var \Drupal\Core\Config\Config $config */
   $config = \Drupal::service('config.factory')->getEditable('advagg.settings');
   $new_value = $config->get('global_counter') + 1;
   $config->set('global_counter', $new_value)->save();
   drush_log(dt('Global counter is now set to @new_value', ['@new_value' => $new_value]), 'ok');
+  _drupal_flush_css_js();
 }
 
 /**
  * Callback function for drush advagg-clear-all-files.
- *
- * Callback is called by using drush_hook_command() where
- * hook is the name of the module (advagg) and command is the name of
- * the Drush command with all "-" characters converted to "_" characters.
  */
 function drush_advagg_clear_all_files() {
-  // Run the command.
-  $css_files = \Drupal::service('asset.css.collection_optimizer')->deleteAllReal();
-  $js_files = \Drupal::service('asset.js.collection_optimizer')->deleteAllReal();
+  // Clear out the cache.
+  Cache::invalidateTags(['library_info']);
+  \Drupal::cache('advagg')->invalidateAll();
+  $pub = \Drupal::service('file_system')->realpath('public://');
+  $css_count = count(glob($pub . '/css/optimized/*.css'));
+  $js_count = count(glob($pub . '/js/optimized/*.js'));
+  file_unmanaged_delete_recursive('public://js/optimized/');
+  file_unmanaged_delete_recursive('public://css/optimized/');
 
   // Report back the results.
-  drush_log(dt('All AdvAgg files have been deleted. @css_count CSS files and @js_count JS files have been removed.', [
-    '@css_count' => count($css_files),
-    '@js_count' => count($js_files),
-  ]), 'ok');
-}
-
-/**
- * Callback function for drush advagg-clear-db-cache.
- *
- * Callback is called by using drush_hook_command() where
- * hook is the name of the module (advagg) and command is the name of
- * the Drush command with all "-" characters converted to "_" characters.
- */
-function drush_advagg_clear_db_cache() {
-  \Drupal::service('cache.advagg.minify')->deleteAll();
-
-  // Report back the results.
-  drush_log(dt('All AdvAgg cache bins have been cleared.'), 'ok');
+  drush_log(dt('All AdvAgg optimized files have been deleted. %css_count CSS files and %js_count JS files have been removed.', [
+    '%css_count' => $css_count,
+    '%js_count' => $js_count,
+  ]));
 }
 
 /**
  * Callback function for drush advagg-cron.
- *
- * Callback is called by using drush_hook_command() where
- * hook is the name of the module (advagg) and command is the name of
- * the Drush command with all "-" characters converted to "_" characters.
  */
 function drush_advagg_cron() {
   // Run AdvAgg cron job.
   $output = advagg_cron(TRUE);
 
-  // Output results from running AssetCollectionOptimizer::deleteStale().
-  list($css_files, $js_files) = $output['stale'];
-  if (!empty($css_files) || !empty($js_files)) {
+  if (!empty($output['css']) || !empty($output['js'])) {
     drush_log(dt('All stale aggregates have been deleted. %css_count CSS files and %js_count JS files have been removed.', [
-      '%css_count' => count($css_files),
-      '%js_count' => count($js_files),
+      '%css_count' => count($output['css']),
+      '%js_count' => count($output['js']),
     ]), 'ok');
   }
   else {
@@ -144,12 +164,5 @@ function drush_advagg_cron() {
 }
 
 /**
- * Flush the correct caches so CSS/JS changes go live.
+ * @} End of "defgroup advagg_drush".
  */
-function drush_advagg_smart_cache_flush() {
-  // Run the commands.
-  \Drupal::service('asset.js.collection_optimizer')->deleteAll();
-  \Drupal::service('asset.css.collection_optimizer')->deleteAll();
-  _drupal_flush_css_js();
-  drush_log('Advagg Aggregates Cache Cleared', 'ok');
-}

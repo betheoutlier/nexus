@@ -17,6 +17,7 @@
 
 .webform-multiple-table td {
   white-space: nowrap;
+  vertical-align: top;
 }
 
 .webform-multiple-table td:first-child {
@@ -78,13 +79,6 @@
 
 .webform-multiple-table .container-inline input[type="submit"] {
   width: inherit;
-}
-
-/**
- * Hide AJAX throbber.
- */
-.form-type-webform-multiple .ajax-progress-throbber {
-  display: none;
 }
 
 /**

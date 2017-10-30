@@ -117,16 +117,8 @@ class MandrillMail implements MailInterface {
     if (isset($message['params']['mandrill']['header'])) {
       $headers = $message['params']['mandrill']['header'] + $headers;
     }
-    // different modules are using different capitalization in the header 
-    // array keys i.e. Reply-to and Reply-To
-    $header_key_map=array();
-    foreach(array_keys($headers) as $header_key){
-      $header_key_map[strtolower($header_key)]=$header_key;
-    }
-    //if the header reply to is not set or empty addd the FROM address to as a Reply-to
-    if (!empty($message['from']) && (!isset($header_key_map['reply-to']) || empty($headers[$header_key_map['reply-to']]))) {
-      $reply_to_key = isset($header_key_map['reply-to']) ? $header_key_map['reply-to'] : 'Reply-to';
-      $headers[$reply_to_key] = $message['from'];
+    if (!empty($message['from']) && empty($headers['Reply-To'])) {
+      $headers['Reply-To'] = $message['from'];
     }
     // Prepare attachments.
     $attachments = array();

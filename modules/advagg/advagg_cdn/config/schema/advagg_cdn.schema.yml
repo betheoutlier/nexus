@@ -25,4 +25,4 @@ advagg_cdn.settings:
       label: 'jQuery UI version to use.'
     minified:
       type: boolean
-      label: 'Whether or not to use a CDN version of jQuery'
+      label: 'Whether or not to use minified cdn resources.'

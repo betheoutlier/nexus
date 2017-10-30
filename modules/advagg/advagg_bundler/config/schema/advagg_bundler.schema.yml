@@ -4,16 +4,24 @@ advagg_bundler.settings:
   mapping:
     active:
       type: boolean
-      label: '.'
-    max_css:
-      type: integer
-      label: 'Maximum target css aggregates.'
-    css_logic:
-      type: integer
-      label: 'The logic to use for bundling the CSS Files.'
-    max_js:
-      type: integer
-      label: 'Maximum target js aggregates.'
-    js_logic:
-      type: integer
-      label: 'The logic to use for bundling the JS Files.'
+      label: 'Whether to run the bundler options.'
+    css:
+      type: mapping
+      label: 'Settings for CSS bundling.'
+      mapping:
+        max:
+          type: integer
+          label: 'Maximum target css aggregates.'
+        logic:
+          type: integer
+          label: 'The logic to use for bundling the CSS Files.'
+    js:
+      type: mapping
+      label: 'Settings for JavaScript bundling.'
+      mapping:
+        max:
+          type: integer
+          label: 'Maximum target JavaScript aggregates.'
+        logic:
+          type: integer
+          label: 'The logic to use for bundling the JS Files.'

@@ -18,7 +18,7 @@ abstract class BaseValidatorForm extends AdvaggFormBase {
   }
 
   /**
-   * Generate a heirachical form sorted by path from asset files.
+   * Generate a hierarchical form sorted by path from asset files.
    *
    * @param string $type
    *   The asset extension - usually 'css' or 'js'.
@@ -358,6 +358,9 @@ abstract class BaseValidatorForm extends AdvaggFormBase {
    *   An associative array to check for the key. Usually a form array.
    * @param array $keys_array
    *   An array of keys to check sequentially in a heirachical manner.
+   *
+   * @return array|bool|mixed
+   *   The array element or FALSE if not found.
    */
   protected function getElement(array $array, array $keys_array) {
     foreach ($keys_array as $key) {

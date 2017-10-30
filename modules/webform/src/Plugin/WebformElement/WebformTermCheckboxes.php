@@ -3,6 +3,7 @@
 namespace Drupal\webform\Plugin\WebformElement;
 
 use Drupal\webform\Element\WebformTermCheckboxes as TermCheckboxesElement;
+use Drupal\webform\Plugin\WebformElementEntityReferenceInterface;
 
 /**
  * Provides a 'webform_term_checkboxes' element.
@@ -14,7 +15,7 @@ use Drupal\webform\Element\WebformTermCheckboxes as TermCheckboxesElement;
  *   category = @Translation("Entity reference elements"),
  * )
  */
-class WebformTermCheckboxes extends Checkboxes implements WebformEntityReferenceInterface {
+class WebformTermCheckboxes extends Checkboxes implements WebformElementEntityReferenceInterface {
 
   use WebformTermReferenceTrait;
 
@@ -32,6 +33,7 @@ class WebformTermCheckboxes extends Checkboxes implements WebformEntityReference
 
     unset($properties['options']);
     unset($properties['options_randomize']);
+    unset($properties['options_display']);
     return $properties;
   }
 
@@ -39,7 +41,7 @@ class WebformTermCheckboxes extends Checkboxes implements WebformEntityReference
    * {@inheritdoc}
    */
   protected function getElementSelectorInputsOptions(array $element) {
-    self::setOptions($element);
+    static::setOptions($element);
     return parent::getElementSelectorInputsOptions($element);
   }
 

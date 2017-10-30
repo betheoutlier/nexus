@@ -1,5 +1,5 @@
 advagg_validator.validator:
-  title: 'AdvaAgg: Asset Validation'
+  title: 'AdvAgg: Asset Validation'
   parent: system.performance_settings
   route_name: advagg_validator.csslint
   description: 'Asset Validation'
