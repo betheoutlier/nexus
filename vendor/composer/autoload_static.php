@@ -12,8 +12,6 @@ class ComposerStaticInitDrupal8
         'a0edc8309cc5e1d60e3047b5df6b7052' => __DIR__ . '/..' . '/guzzlehttp/psr7/src/functions_include.php',
         'c964ee0ededf28c96ebd9db5099ef910' => __DIR__ . '/..' . '/guzzlehttp/promises/src/functions_include.php',
         '37a3dc5111fe8f707ab4c132ef1dbc62' => __DIR__ . '/..' . '/guzzlehttp/guzzle/src/functions_include.php',
-        '667aeda72477189d0494fecd327c3641' => __DIR__ . '/..' . '/symfony/var-dumper/Resources/functions/dump.php',
-        'e7223560d890eab89cda23685e711e2c' => __DIR__ . '/..' . '/psy/psysh/src/Psy/functions.php',
         '5255c38a0faeba867671b61dfda6d864' => __DIR__ . '/..' . '/paragonie/random_compat/lib/random.php',
         'def43f6c87e4f8dfd0c9e1b1bab14fe8' => __DIR__ . '/..' . '/symfony/polyfill-iconv/bootstrap.php',
         'e40631d46120a9c38ea139981f8dab26' => __DIR__ . '/..' . '/ircmaxell/password-compat/lib/password.php',
@@ -29,22 +27,15 @@ class ComposerStaticInitDrupal8
             'Zend\\Escaper\\' => 13,
             'Zend\\Diactoros\\' => 15,
         ),
-        'X' => 
-        array (
-            'XdgBaseDir\\' => 11,
-        ),
         'W' => 
         array (
             'Wikimedia\\Composer\\' => 19,
-            'Webmozart\\PathUtil\\' => 19,
-            'Webmozart\\Assert\\' => 17,
         ),
         'S' => 
         array (
             'Symfony\\Polyfill\\Mbstring\\' => 26,
             'Symfony\\Polyfill\\Iconv\\' => 23,
             'Symfony\\Component\\Yaml\\' => 23,
-            'Symfony\\Component\\VarDumper\\' => 28,
             'Symfony\\Component\\Validator\\' => 28,
             'Symfony\\Component\\Translation\\' => 30,
             'Symfony\\Component\\Serializer\\' => 29,
@@ -52,7 +43,6 @@ class ComposerStaticInitDrupal8
             'Symfony\\Component\\Process\\' => 26,
             'Symfony\\Component\\HttpKernel\\' => 29,
             'Symfony\\Component\\HttpFoundation\\' => 33,
-            'Symfony\\Component\\Finder\\' => 25,
             'Symfony\\Component\\EventDispatcher\\' => 34,
             'Symfony\\Component\\DomCrawler\\' => 29,
             'Symfony\\Component\\DependencyInjection\\' => 38,
@@ -67,10 +57,8 @@ class ComposerStaticInitDrupal8
         ),
         'P' => 
         array (
-            'Psy\\' => 4,
             'Psr\\Log\\' => 8,
             'Psr\\Http\\Message\\' => 17,
-            'PhpParser\\' => 10,
         ),
         'M' => 
         array (
@@ -95,8 +83,6 @@ class ComposerStaticInitDrupal8
         ),
         'C' => 
         array (
-            'Consolidation\\OutputFormatters\\' => 31,
-            'Consolidation\\AnnotatedCommand\\' => 31,
             'Composer\\Semver\\' => 16,
             'Composer\\Installers\\' => 20,
             'CommerceGuys\\Intl\\' => 18,
@@ -139,21 +125,9 @@ class ComposerStaticInitDrupal8
         array (
             0 => __DIR__ . '/..' . '/zendframework/zend-diactoros/src',
         ),
-        'XdgBaseDir\\' => 
-        array (
-            0 => __DIR__ . '/..' . '/dnoegel/php-xdg-base-dir/src',
-        ),
         'Wikimedia\\Composer\\' => 
         array (
             0 => __DIR__ . '/..' . '/wikimedia/composer-merge-plugin/src',
-        ),
-        'Webmozart\\PathUtil\\' => 
-        array (
-            0 => __DIR__ . '/..' . '/webmozart/path-util/src',
-        ),
-        'Webmozart\\Assert\\' => 
-        array (
-            0 => __DIR__ . '/..' . '/webmozart/assert/src',
         ),
         'Symfony\\Polyfill\\Mbstring\\' => 
         array (
@@ -166,10 +140,6 @@ class ComposerStaticInitDrupal8
         'Symfony\\Component\\Yaml\\' => 
         array (
             0 => __DIR__ . '/..' . '/symfony/yaml',
-        ),
-        'Symfony\\Component\\VarDumper\\' => 
-        array (
-            0 => __DIR__ . '/..' . '/symfony/var-dumper',
         ),
         'Symfony\\Component\\Validator\\' => 
         array (
@@ -198,10 +168,6 @@ class ComposerStaticInitDrupal8
         'Symfony\\Component\\HttpFoundation\\' => 
         array (
             0 => __DIR__ . '/..' . '/symfony/http-foundation',
-        ),
-        'Symfony\\Component\\Finder\\' => 
-        array (
-            0 => __DIR__ . '/..' . '/symfony/finder',
         ),
         'Symfony\\Component\\EventDispatcher\\' => 
         array (
@@ -247,10 +213,6 @@ class ComposerStaticInitDrupal8
         array (
             0 => __DIR__ . '/..' . '/symfony/phpunit-bridge',
         ),
-        'Psy\\' => 
-        array (
-            0 => __DIR__ . '/..' . '/psy/psysh/src/Psy',
-        ),
         'Psr\\Log\\' => 
         array (
             0 => __DIR__ . '/..' . '/psr/log/Psr/Log',
@@ -258,10 +220,6 @@ class ComposerStaticInitDrupal8
         'Psr\\Http\\Message\\' => 
         array (
             0 => __DIR__ . '/..' . '/psr/http-message/src',
-        ),
-        'PhpParser\\' => 
-        array (
-            0 => __DIR__ . '/..' . '/nikic/php-parser/lib/PhpParser',
         ),
         'Masterminds\\' => 
         array (
@@ -310,14 +268,6 @@ class ComposerStaticInitDrupal8
         'Doctrine\\Common\\' => 
         array (
             0 => __DIR__ . '/..' . '/doctrine/common/lib/Doctrine/Common',
-        ),
-        'Consolidation\\OutputFormatters\\' => 
-        array (
-            0 => __DIR__ . '/..' . '/consolidation/output-formatters/src',
-        ),
-        'Consolidation\\AnnotatedCommand\\' => 
-        array (
-            0 => __DIR__ . '/..' . '/consolidation/annotated-command/src',
         ),
         'Composer\\Semver\\' => 
         array (
@@ -390,17 +340,6 @@ class ComposerStaticInitDrupal8
                 0 => __DIR__ . '/..' . '/phpspec/prophecy/src',
             ),
         ),
-        'J' => 
-        array (
-            'JakubOnderka\\PhpConsoleHighlighter' => 
-            array (
-                0 => __DIR__ . '/..' . '/jakub-onderka/php-console-highlighter/src',
-            ),
-            'JakubOnderka\\PhpConsoleColor' => 
-            array (
-                0 => __DIR__ . '/..' . '/jakub-onderka/php-console-color/src',
-            ),
-        ),
         'E' => 
         array (
             'Egulias\\' => 
@@ -414,10 +353,6 @@ class ComposerStaticInitDrupal8
         ),
         'D' => 
         array (
-            'Drush' => 
-            array (
-                0 => __DIR__ . '/..' . '/drush/drush/lib',
-            ),
             'Doctrine\\Common\\Lexer\\' => 
             array (
                 0 => __DIR__ . '/..' . '/doctrine/lexer/lib',
@@ -435,17 +370,9 @@ class ComposerStaticInitDrupal8
                 0 => __DIR__ . '/..' . '/doctrine/annotations/lib',
             ),
         ),
-        'C' => 
-        array (
-            'Consolidation' => 
-            array (
-                0 => __DIR__ . '/..' . '/drush/drush/lib',
-            ),
-        ),
     );
 
     public static $classMap = array (
-        'Console_Table' => __DIR__ . '/..' . '/pear/console_table/Table.php',
         'Drupal' => __DIR__ . '/../..' . '/core/lib/Drupal.php',
         'Drupal\\Component\\Utility\\Timer' => __DIR__ . '/../..' . '/core/lib/Drupal/Component/Utility/Timer.php',
         'Drupal\\Component\\Utility\\Unicode' => __DIR__ . '/../..' . '/core/lib/Drupal/Component/Utility/Unicode.php',
@@ -475,6 +402,16 @@ class ComposerStaticInitDrupal8
         'Generic_Sniffs_Debug_CSSLintSniff' => __DIR__ . '/..' . '/squizlabs/php_codesniffer/CodeSniffer/Standards/Generic/Sniffs/Debug/CSSLintSniff.php',
         'Generic_Sniffs_Debug_ClosureLinterSniff' => __DIR__ . '/..' . '/squizlabs/php_codesniffer/CodeSniffer/Standards/Generic/Sniffs/Debug/ClosureLinterSniff.php',
         'Generic_Sniffs_Debug_JSHintSniff' => __DIR__ . '/..' . '/squizlabs/php_codesniffer/CodeSniffer/Standards/Generic/Sniffs/Debug/JSHintSniff.php',
+        'Generic_Sniffs_Files_ByteOrderMarkSniff' => __DIR__ . '/..' . '/squizlabs/php_codesniffer/CodeSniffer/Standards/Generic/Sniffs/Files/ByteOrderMarkSniff.php',
+        'Generic_Sniffs_Files_EndFileNewlineSniff' => __DIR__ . '/..' . '/squizlabs/php_codesniffer/CodeSniffer/Standards/Generic/Sniffs/Files/EndFileNewlineSniff.php',
+        'Generic_Sniffs_Files_EndFileNoNewlineSniff' => __DIR__ . '/..' . '/squizlabs/php_codesniffer/CodeSniffer/Standards/Generic/Sniffs/Files/EndFileNoNewlineSniff.php',
+        'Generic_Sniffs_Files_InlineHTMLSniff' => __DIR__ . '/..' . '/squizlabs/php_codesniffer/CodeSniffer/Standards/Generic/Sniffs/Files/InlineHTMLSniff.php',
+        'Generic_Sniffs_Files_LineEndingsSniff' => __DIR__ . '/..' . '/squizlabs/php_codesniffer/CodeSniffer/Standards/Generic/Sniffs/Files/LineEndingsSniff.php',
+        'Generic_Sniffs_Files_LineLengthSniff' => __DIR__ . '/..' . '/squizlabs/php_codesniffer/CodeSniffer/Standards/Generic/Sniffs/Files/LineLengthSniff.php',
+        'Generic_Sniffs_Files_LowercasedFilenameSniff' => __DIR__ . '/..' . '/squizlabs/php_codesniffer/CodeSniffer/Standards/Generic/Sniffs/Files/LowercasedFilenameSniff.php',
+        'Generic_Sniffs_Files_OneClassPerFileSniff' => __DIR__ . '/..' . '/squizlabs/php_codesniffer/CodeSniffer/Standards/Generic/Sniffs/Files/OneClassPerFileSniff.php',
+        'Generic_Sniffs_Files_OneInterfacePerFileSniff' => __DIR__ . '/..' . '/squizlabs/php_codesniffer/CodeSniffer/Standards/Generic/Sniffs/Files/OneInterfacePerFileSniff.php',
+        'Generic_Sniffs_Files_OneTraitPerFileSniff' => __DIR__ . '/..' . '/squizlabs/php_codesniffer/CodeSniffer/Standards/Generic/Sniffs/Files/OneTraitPerFileSniff.php',
         'Generic_Sniffs_Formatting_DisallowMultipleStatementsSniff' => __DIR__ . '/..' . '/squizlabs/php_codesniffer/CodeSniffer/Standards/Generic/Sniffs/Formatting/DisallowMultipleStatementsSniff.php',
         'Generic_Sniffs_Formatting_MultipleStatementAlignmentSniff' => __DIR__ . '/..' . '/squizlabs/php_codesniffer/CodeSniffer/Standards/Generic/Sniffs/Formatting/MultipleStatementAlignmentSniff.php',
         'Generic_Sniffs_Formatting_NoSpaceAfterCastSniff' => __DIR__ . '/..' . '/squizlabs/php_codesniffer/CodeSniffer/Standards/Generic/Sniffs/Formatting/NoSpaceAfterCastSniff.php',
@@ -530,6 +467,7 @@ class ComposerStaticInitDrupal8
         'PEAR_Sniffs_Commenting_InlineCommentSniff' => __DIR__ . '/..' . '/squizlabs/php_codesniffer/CodeSniffer/Standards/PEAR/Sniffs/Commenting/InlineCommentSniff.php',
         'PEAR_Sniffs_ControlStructures_ControlSignatureSniff' => __DIR__ . '/..' . '/squizlabs/php_codesniffer/CodeSniffer/Standards/PEAR/Sniffs/ControlStructures/ControlSignatureSniff.php',
         'PEAR_Sniffs_ControlStructures_MultiLineConditionSniff' => __DIR__ . '/..' . '/squizlabs/php_codesniffer/CodeSniffer/Standards/PEAR/Sniffs/ControlStructures/MultiLineConditionSniff.php',
+        'PEAR_Sniffs_Files_IncludingFileSniff' => __DIR__ . '/..' . '/squizlabs/php_codesniffer/CodeSniffer/Standards/PEAR/Sniffs/Files/IncludingFileSniff.php',
         'PEAR_Sniffs_Formatting_MultiLineAssignmentSniff' => __DIR__ . '/..' . '/squizlabs/php_codesniffer/CodeSniffer/Standards/PEAR/Sniffs/Formatting/MultiLineAssignmentSniff.php',
         'PEAR_Sniffs_Functions_FunctionCallSignatureSniff' => __DIR__ . '/..' . '/squizlabs/php_codesniffer/CodeSniffer/Standards/PEAR/Sniffs/Functions/FunctionCallSignatureSniff.php',
         'PEAR_Sniffs_Functions_FunctionDeclarationSniff' => __DIR__ . '/..' . '/squizlabs/php_codesniffer/CodeSniffer/Standards/PEAR/Sniffs/Functions/FunctionDeclarationSniff.php',
@@ -984,12 +922,15 @@ class ComposerStaticInitDrupal8
         'PHP_Token_YIELD' => __DIR__ . '/..' . '/phpunit/php-token-stream/src/Token.php',
         'PHP_Token_YIELD_FROM' => __DIR__ . '/..' . '/phpunit/php-token-stream/src/Token.php',
         'PSR1_Sniffs_Classes_ClassDeclarationSniff' => __DIR__ . '/..' . '/squizlabs/php_codesniffer/CodeSniffer/Standards/PSR1/Sniffs/Classes/ClassDeclarationSniff.php',
+        'PSR1_Sniffs_Files_SideEffectsSniff' => __DIR__ . '/..' . '/squizlabs/php_codesniffer/CodeSniffer/Standards/PSR1/Sniffs/Files/SideEffectsSniff.php',
         'PSR1_Sniffs_Methods_CamelCapsMethodNameSniff' => __DIR__ . '/..' . '/squizlabs/php_codesniffer/CodeSniffer/Standards/PSR1/Sniffs/Methods/CamelCapsMethodNameSniff.php',
         'PSR2_Sniffs_Classes_ClassDeclarationSniff' => __DIR__ . '/..' . '/squizlabs/php_codesniffer/CodeSniffer/Standards/PSR2/Sniffs/Classes/ClassDeclarationSniff.php',
         'PSR2_Sniffs_Classes_PropertyDeclarationSniff' => __DIR__ . '/..' . '/squizlabs/php_codesniffer/CodeSniffer/Standards/PSR2/Sniffs/Classes/PropertyDeclarationSniff.php',
         'PSR2_Sniffs_ControlStructures_ControlStructureSpacingSniff' => __DIR__ . '/..' . '/squizlabs/php_codesniffer/CodeSniffer/Standards/PSR2/Sniffs/ControlStructures/ControlStructureSpacingSniff.php',
         'PSR2_Sniffs_ControlStructures_ElseIfDeclarationSniff' => __DIR__ . '/..' . '/squizlabs/php_codesniffer/CodeSniffer/Standards/PSR2/Sniffs/ControlStructures/ElseIfDeclarationSniff.php',
         'PSR2_Sniffs_ControlStructures_SwitchDeclarationSniff' => __DIR__ . '/..' . '/squizlabs/php_codesniffer/CodeSniffer/Standards/PSR2/Sniffs/ControlStructures/SwitchDeclarationSniff.php',
+        'PSR2_Sniffs_Files_ClosingTagSniff' => __DIR__ . '/..' . '/squizlabs/php_codesniffer/CodeSniffer/Standards/PSR2/Sniffs/Files/ClosingTagSniff.php',
+        'PSR2_Sniffs_Files_EndFileNewlineSniff' => __DIR__ . '/..' . '/squizlabs/php_codesniffer/CodeSniffer/Standards/PSR2/Sniffs/Files/EndFileNewlineSniff.php',
         'PSR2_Sniffs_Methods_FunctionCallSignatureSniff' => __DIR__ . '/..' . '/squizlabs/php_codesniffer/CodeSniffer/Standards/PSR2/Sniffs/Methods/FunctionCallSignatureSniff.php',
         'PSR2_Sniffs_Methods_FunctionClosingBraceSniff' => __DIR__ . '/..' . '/squizlabs/php_codesniffer/CodeSniffer/Standards/PSR2/Sniffs/Methods/FunctionClosingBraceSniff.php',
         'PSR2_Sniffs_Methods_MethodDeclarationSniff' => __DIR__ . '/..' . '/squizlabs/php_codesniffer/CodeSniffer/Standards/PSR2/Sniffs/Methods/MethodDeclarationSniff.php',
@@ -1078,6 +1019,7 @@ class ComposerStaticInitDrupal8
         'Squiz_Sniffs_ControlStructures_SwitchDeclarationSniff' => __DIR__ . '/..' . '/squizlabs/php_codesniffer/CodeSniffer/Standards/Squiz/Sniffs/ControlStructures/SwitchDeclarationSniff.php',
         'Squiz_Sniffs_Debug_JSLintSniff' => __DIR__ . '/..' . '/squizlabs/php_codesniffer/CodeSniffer/Standards/Squiz/Sniffs/Debug/JSLintSniff.php',
         'Squiz_Sniffs_Debug_JavaScriptLintSniff' => __DIR__ . '/..' . '/squizlabs/php_codesniffer/CodeSniffer/Standards/Squiz/Sniffs/Debug/JavaScriptLintSniff.php',
+        'Squiz_Sniffs_Files_FileExtensionSniff' => __DIR__ . '/..' . '/squizlabs/php_codesniffer/CodeSniffer/Standards/Squiz/Sniffs/Files/FileExtensionSniff.php',
         'Squiz_Sniffs_Formatting_OperatorBracketSniff' => __DIR__ . '/..' . '/squizlabs/php_codesniffer/CodeSniffer/Standards/Squiz/Sniffs/Formatting/OperatorBracketSniff.php',
         'Squiz_Sniffs_Functions_FunctionDeclarationArgumentSpacingSniff' => __DIR__ . '/..' . '/squizlabs/php_codesniffer/CodeSniffer/Standards/Squiz/Sniffs/Functions/FunctionDeclarationArgumentSpacingSniff.php',
         'Squiz_Sniffs_Functions_FunctionDeclarationSniff' => __DIR__ . '/..' . '/squizlabs/php_codesniffer/CodeSniffer/Standards/Squiz/Sniffs/Functions/FunctionDeclarationSniff.php',
@@ -1140,6 +1082,7 @@ class ComposerStaticInitDrupal8
         'Symfony\\Component\\HttpKernel\\TerminableInterface' => __DIR__ . '/..' . '/symfony/http-kernel/TerminableInterface.php',
         'Text_Template' => __DIR__ . '/..' . '/phpunit/php-text-template/src/Template.php',
         'Zend_Sniffs_Debug_CodeAnalyzerSniff' => __DIR__ . '/..' . '/squizlabs/php_codesniffer/CodeSniffer/Standards/Zend/Sniffs/Debug/CodeAnalyzerSniff.php',
+        'Zend_Sniffs_Files_ClosingTagSniff' => __DIR__ . '/..' . '/squizlabs/php_codesniffer/CodeSniffer/Standards/Zend/Sniffs/Files/ClosingTagSniff.php',
         'Zend_Sniffs_NamingConventions_ValidVariableNameSniff' => __DIR__ . '/..' . '/squizlabs/php_codesniffer/CodeSniffer/Standards/Zend/Sniffs/NamingConventions/ValidVariableNameSniff.php',
     );
 
