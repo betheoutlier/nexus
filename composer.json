@@ -6,7 +6,14 @@
     "require": {
         "composer/installers": "^1.0.24",
         "wikimedia/composer-merge-plugin": "^1.4",
-        "drupal/commerce": "^2.2"
+        "drupal/commerce": "^2.3",
+        "drupal/commerce_stripe": "^1.0@beta",
+        "drupal/ctools": "^3.0",
+        "drupal/share_everywhere": "^1.1",
+        "drupal/geshifilter": "^1.2",
+        "drupal/votingapi": "^3.0@alpha",
+        "drupal/votingapi_widgets": "^1.0@alpha",
+        "drupal/rules": "^3.0@alpha"
     },
     "replace": {
         "drupal/core": "^8.4"
