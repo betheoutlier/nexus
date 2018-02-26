@@ -1186,6 +1186,10 @@ function drupal_validate_form($form_id, &$form, &$form_state) {
       return;
     }
   }
+  // Ensure the correct protocol when #https is set.
+  if (!empty($form['#https']) && !$GLOBALS['is_https']) {
+    form_set_error(NULL, t('This form requires HTTPS.  Contact the site administrator if the problem persists.'));
+  }
 
   _form_validate($form, $form_state, $form_id);
   $validated_forms[$form_id] = TRUE;
@@ -1702,7 +1706,10 @@ function form_get_error($element) {
  * Flags an element as having an error.
  */
 function form_error(&$element, $message = '') {
-  form_set_error(implode('][', $element['#parents']), $message);
+  $id = $element['#id'];
+  $element['#prefix'] = "<a id = '$id-error' class = 'element-invisible element-focusable'>$message</a>";
+  $link = l($message,current_path(), array("fragment" => "$id-error", 'absolute'=> TRUE, 'html'=>TRUE,));
+  form_set_error(implode('][', $element['#parents']), $link);
 }
 
 /**
@@ -3984,12 +3991,7 @@ function form_process_autocomplete($element) {
     // browser interpreting the path plus search string as an actual file.
     $current_clean_url = isset($GLOBALS['conf']['clean_url']) ? $GLOBALS['conf']['clean_url'] : NULL;
     $GLOBALS['conf']['clean_url'] = 0;
-    // Force the script path to 'index.php', in case the server is not
-    // configured to find it automatically. Normally it is the responsibility
-    // of the site to do this themselves using hook_url_outbound_alter() (see
-    // url()) but since this code is forcing non-clean URLs on sites that don't
-    // normally use them, it is done here instead.
-    $element['#autocomplete_input']['#url_value'] = url($element['#autocomplete_path'], array('absolute' => TRUE, 'script' => 'index.php'));
+    $element['#autocomplete_input']['#url_value'] = url($element['#autocomplete_path'], array('absolute' => TRUE));
     $GLOBALS['conf']['clean_url'] = $current_clean_url;
   }
   return $element;
