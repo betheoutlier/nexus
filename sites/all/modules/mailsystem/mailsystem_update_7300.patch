@@ -1,0 +1,28 @@
+diff --git a/mailsystem.install b/mailsystem.install
+index c7591d1..6eeb4a1 100644
+--- a/mailsystem.install
++++ b/mailsystem.install
+@@ -94,14 +94,15 @@ function mailsystem_update_7300() {
+   }
+   mailsystem_set($mail_system);
+ 
+-  // Remove the generated classes from the registry.
+-  db_delete('registry')
+-    ->condition('name', array_keys($genclasses))
+-    ->execute();
+-
+-  // Finally remove all the generated class files from the files directory.
+-  foreach ($genclasses as $classname => $filename) {
+-    file_unmanaged_delete($filename);
++  if (!empty($genclasses)) {
++    // Remove the generated classes from the registry.
++    db_delete('registry')
++      ->condition('name', array_keys($genclasses))
++      ->execute();
++    // Finally remove all the generated class files from the files directory.
++    foreach ($genclasses as $classname => $filename) {
++      file_unmanaged_delete($filename);
++    }
+   }
+ 
+   return t('Converted !count dynamically generated mailsystem classes',
