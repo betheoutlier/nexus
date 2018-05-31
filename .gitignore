@@ -6,3 +6,6 @@ sites/*/files
 sites/*/private
 
 .DS_Store
+
+# We will only have individual sites and core, no shared /all modules or 'platform' modules. 
+sites/*
