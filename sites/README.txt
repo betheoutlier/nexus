@@ -1,0 +1,1 @@
+Place your Drupal 6 sites in this directory
