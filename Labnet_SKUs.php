@@ -158,14 +158,11 @@ $header_count = 0;
 $empties = array();
 foreach($results as $r_id => $row) {
   if($result_count===0) {
-    $t=1;
     foreach(array_keys($row) as $header) {
       $headers[$header_count] = $header;
       $header_count++;
     }
   }
-//  else {
-    $t=1;
     //if there is more then on attached node.
     if(isset($data[$row["Product ID"]]) && !empty($row["Attached to Product Display Page ID (Combined)"])) {
       if(!empty($data[$row["Product ID"]]["Attached to Product Display Page ID (Combined)"])) {
@@ -175,7 +172,7 @@ foreach($results as $r_id => $row) {
       $attached_nodes[$row["Product ID"]][] = $row["Attached to Product Display Page ID (Combined)"];
     }
     elseif(isset($data[$row["Product ID"]]) && empty($row["Attached to Product Display Page ID (Combined)"])) {
-      $empties[]=$row;
+      $empties[]=$row["Product ID"];
     }
     else {
       $data[$row["Product ID"]] = $row;
@@ -183,12 +180,18 @@ foreach($results as $r_id => $row) {
         $attached_nodes[$row["Product ID"]][] = $row["Attached to Product Display Page ID (Combined)"];
       }
     }
-//  }
+
   $product_ids[$row["Product ID"]] = $row["Product ID"];
 
   $result_count++;
 }
-$t=1;
+
+foreach($empties as $ek => $ev) {
+  if(!isset($data[$ev])) {
+    $t=1;
+  }
+}
+
 //Get SKU Region
 //  2|North America
 //  3|Europe
@@ -221,7 +224,6 @@ foreach($product_ids as $product_id) {
       "6" => "false",
     );
     foreach($results_region as $result_region) {
-      $t=1;
       $region[$result_region["region_id"]] = "true";
     }
     $data[$product_id][] = $region[2];
@@ -283,32 +285,8 @@ $sql_node_data = '
 $query_node_data = $pdo->query($sql_node_data);
 $results_node_data = $query_node_data->fetchAll(PDO::FETCH_ASSOC);
 
-//Get the Images
-//Do this by sku,
-//$skus_for_images_products = array();
-//$skus_for_images_parts = array();
-//foreach($data as $sku_id => $sku_data) {
-//  if($sku_data["Type"]=="product") {
-//    $skus_for_images_products[$sku_id] = $sku_id;
-//  }
-//  else if($sku_data["Type"]=="part") {
-//    $t=1;
-//    $skus_for_images_parts[$sku_id] = $sku_id;
-//  }
-//  else {
-//    $t=1;
-//  }
-//}
-//$t=1;
-//
-//foreach($skus_for_images_products as $product_id) {
-//
-//
-//
-//}
-
+//get images
 //redo the query, this time only query the main product field as images mostly do not relate to assoc parts.
-//foreach($data as $sku_id => $sku_data) {
   $sql_image_data = '
     SELECT
         p.product_id,
@@ -336,36 +314,105 @@ $results_node_data = $query_node_data->fetchAll(PDO::FETCH_ASSOC);
             ON
         f.fid = i.field_product_images_fid
     ';
-//}
-
-//
-//$sql_image_data = '
-//    SELECT
-//      i.entity_id as "Product Display Page ID",
-//      f.uri as "URL",
-//      f.filename as "Filename",
-//      i.field_product_images_title as "Title",
-//      i.field_product_images_alt as "Alt Text",
-//      i.field_product_images_width as "Width",
-//      i.field_product_images_height as "Height",
-//      f.filesize as "Image File Size"
-//    FROM
-//      `field_data_field_product_images` as i
-//    LEFT JOIN
-//      `file_managed` as f
-//          ON
-//      f.fid = i.field_product_images_fid
-//    WHERE
-//        i.entity_id IN ('.implode(',',$nids).')
-//';
 $query_image_data = $pdo->query($sql_image_data);
 $results_image_data = $query_image_data->fetchAll(PDO::FETCH_ASSOC);
-
 //Replace the uri field with absolute link.
 foreach($results_image_data as $key => $image_data) {
   $image_uri = $image_data["URL"];
   $image_url = str_replace("public://","https://www.labnetinternational.com/sites/www.labnetinternational.com/files/",$image_uri);
   $results_image_data[$key]["URL"] = $image_url;
+}
+//get all images
+$sql_image_all_data = '
+    SELECT
+      i.entity_id as "Product Display Page ID",
+      f.uri as "URL",
+      f.filename as "Filename",
+      i.field_product_images_title as "Title",
+      i.field_product_images_alt as "Alt Text",
+      i.field_product_images_width as "Width",
+      i.field_product_images_height as "Height",
+      f.filesize as "Image File Size"
+    FROM
+      `field_data_field_product_images` as i
+    LEFT JOIN
+      `file_managed` as f
+          ON
+      f.fid = i.field_product_images_fid
+    WHERE
+        i.entity_id IN ('.implode(',',$nids).')
+';
+
+$query_image_all_data = $pdo->query($sql_image_all_data);
+$results_image_all_data = $query_image_all_data->fetchAll(PDO::FETCH_ASSOC);
+//Replace the uri field with absolute link.
+foreach($results_image_all_data as $key => $image_data) {
+  $image_uri = $image_data["URL"];
+  $image_url = str_replace("public://","https://www.labnetinternational.com/sites/www.labnetinternational.com/files/",$image_uri);
+  $results_image_all_data[$key]["URL"] = $image_url;
+}
+
+
+
+//get docs
+//redo the query, this time only query the main product field as docs mostly do not relate to assoc parts.
+$sql_docs_data = '
+    SELECT
+        p.product_id,
+        p.sku,
+        d.entity_id as "Product Display Page ID",
+        f.uri as "URL",
+        f.filename as "Filename",
+        d.field_product_documents_description as "Description",
+        f.filesize as "Image File Size"
+  FROM
+      commerce_product as p
+  INNER JOIN 
+      `field_data_field_product_entities` as node_ref
+          ON
+      node_ref.`field_product_entities_product_id` = p.`product_id`
+  INNER JOIN
+      `field_data_field_product_documents` as d
+        ON
+      d.entity_id = node_ref.entity_id
+  INNER JOIN
+        `file_managed` as f
+            ON
+        f.fid = d.field_product_documents_fid
+    ';
+
+$query_docs_data = $pdo->query($sql_docs_data);
+$results_docs_data = $query_docs_data->fetchAll(PDO::FETCH_ASSOC);
+//Replace the uri field with absolute link.
+foreach($results_docs_data as $key => $doc_data) {
+  $doc_uri = $doc_data["URL"];
+  $doc_url = str_replace("public://","https://www.labnetinternational.com/sites/www.labnetinternational.com/files/",$doc_uri);
+  $results_docs_data[$key]["URL"] = $doc_url;
+}
+//get all docs
+$sql_docs_all_data = '
+    SELECT
+      d.entity_id as "Product Display Page ID",
+      f.uri as "URL",
+      f.filename as "Filename",
+      d.field_product_documents_description as "Description",
+      f.filesize as "Image File Size"
+    FROM
+      `field_data_field_product_documents` as d
+    LEFT JOIN
+      `file_managed` as f
+          ON
+      f.fid = d.field_product_documents_fid
+    WHERE
+        d.entity_id IN ('.implode(',',$nids).')
+';
+$query_docs_all_data = $pdo->query($sql_docs_all_data);
+$results_docs_all_data = $query_docs_all_data->fetchAll(PDO::FETCH_ASSOC);
+//Replace the uri field with absolute link.
+foreach($results_docs_all_data as $key => $doc_data) {
+  $doc_uri = $doc_data["URL"];
+  $doc_url = str_replace("public://","https://www.labnetinternational.com/sites/www.labnetinternational.com/files/",$doc_uri);
+  $results_docs_all_data[$key]["URL"] = $doc_url;
 }
 
 
@@ -381,7 +428,6 @@ $output_skus .= "<thead><tr>";
 foreach($headers as $header) {
   $output_skus .= "<th>".$header."</th>";
 }
-$t=1;
 $output_skus .= "</tr></thead><tbody>";
 foreach($data as $row) {
   $output_skus .= "<tr>";
@@ -390,7 +436,6 @@ foreach($data as $row) {
   }
   $output_skus .= "</tr>";
   $rowcount++;
-  $t=1;
 }
 $output_skus .= "</tbody></table>";
 
@@ -415,7 +460,6 @@ foreach($results_node_data as $row) {
   }
   $output_node_data .= "</tr>";
   $rowcount++;
-  $t=1;
 }
 $output_node_data .= "</tbody></table>";
 
@@ -436,7 +480,7 @@ foreach ($results_node_data as $fields) {
 }
 fclose($fp);
 
-$fp = fopen('/vagrant/labnet_images.csv', 'w');
+$fp = fopen('/vagrant/labnet_images_main_sku_only.csv', 'w');
 fprintf($fp, chr(0xEF).chr(0xBB).chr(0xBF));
 fputcsv($fp, array_keys($results_image_data[0]));
 foreach ($results_image_data as $fields) {
@@ -444,13 +488,29 @@ foreach ($results_image_data as $fields) {
 }
 fclose($fp);
 
-//$fp = fopen('/vagrant/labnet_documents.csv', 'w');
-//fprintf($fp, chr(0xEF).chr(0xBB).chr(0xBF));
-//fputcsv($fp, array_keys($results_node_data[0]));
-//foreach ($results_node_data as $fields) {
-//  fputcsv($fp, $fields);
-//}
-//fclose($fp);
+$fp = fopen('/vagrant/labnet_images_all.csv', 'w');
+fprintf($fp, chr(0xEF).chr(0xBB).chr(0xBF));
+fputcsv($fp, array_keys($results_image_all_data[0]));
+foreach ($results_image_all_data as $fields) {
+  fputcsv($fp, $fields);
+}
+fclose($fp);
+
+$fp = fopen('/vagrant/labnet_documents_main_sku_only.csv', 'w');
+fprintf($fp, chr(0xEF).chr(0xBB).chr(0xBF));
+fputcsv($fp, array_keys($results_docs_data[0]));
+foreach ($results_docs_data as $fields) {
+  fputcsv($fp, $fields);
+}
+fclose($fp);
+
+$fp = fopen('/vagrant/labnet_documents_all.csv', 'w');
+fprintf($fp, chr(0xEF).chr(0xBB).chr(0xBF));
+fputcsv($fp, array_keys($results_docs_all_data[0]));
+foreach ($results_docs_all_data as $fields) {
+  fputcsv($fp, $fields);
+}
+fclose($fp);
 
 //End
 //print $output_skus;
