@@ -159,7 +159,7 @@ function template_preprocess_webform_components_form(&$variables) {
 
   $form['components']['#attached']['library'][] = array('webform', 'admin');
 
-  // @todo: Attach these. See http://drupal.org/node/732022.
+  // @todo Attach these. See http://drupal.org/node/732022.
   drupal_add_tabledrag('webform-components', 'order', 'sibling', 'webform-weight');
   drupal_add_tabledrag('webform-components', 'match', 'parent', 'webform-pid', 'webform-pid', 'webform-cid');
 
@@ -461,9 +461,9 @@ function webform_component_edit_form($form, $form_state, $node, $component, $clo
         '#title' => t('Label display'),
         '#default_value' => !empty($component['extra']['title_display']) ? $component['extra']['title_display'] : 'before',
         '#options' => array('before' => t('Above')) +
-                      $inline_option +
-                      $internal_option +
-                      array('none' => t('None')),
+          $inline_option +
+          $internal_option +
+          array('none' => t('None')),
         '#description' => t("Determines the placement of the component's label."),
       );
     }
@@ -996,6 +996,7 @@ function webform_component_feature($type, $feature) {
     'email_address' => FALSE,
     'email_name' => FALSE,
     'required' => TRUE,
+    'stores_data' => TRUE,
     'title' => TRUE,
     'title_display' => TRUE,
     'title_inline' => TRUE,
