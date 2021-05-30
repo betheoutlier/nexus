@@ -1,17 +1,16 @@
 # Ignore paths that contain user-generated content.
-files
-sites/*/files
-sites/*/private
+/sites/*/files
+/sites/*/private
 
-sites/*/.git
-sites/*/.gitignore
-sites/*
-!sites/all
-!sites/all/*
+/sites/*/.git
+/sites/*/.gitignore
+/sites/*
+!/sites/all
+!/sites/all/*
 
 
-profiles
-profiles/*
+/profiles
+/profiles/*
 
 local.settings.php
 .DS_Store
@@ -19,5 +18,5 @@ local.settings.php
 .sass-cache
 Gemfile.lock
 
-.vagrant/
-.vagrant
+/.vagrant/
+/.vagrant
